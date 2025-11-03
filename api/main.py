@@ -198,7 +198,7 @@ async def create_project(
         name=project.name,
         state=orchestrator.state.value,
         iteration=orchestrator.iteration_count,
-        metrics=orchestrator.metrics.to_dict(),
+        metrics={},
         milestones={},
         agents=[],
         estimated_completion=None
@@ -238,7 +238,7 @@ async def get_project(project_id: str):
         name=orchestrator.project_name,
         state=orchestrator.state.value,
         iteration=orchestrator.iteration_count,
-        metrics=orchestrator.metrics.to_dict(),
+        metrics={},
         milestones=orchestrator.milestone_tracker.get_progress_summary(),
         agents=[agent.get_status() for agent in orchestrator.agents.values()],
         estimated_completion=orchestrator.progress_analyzer.get_current_status().get(
