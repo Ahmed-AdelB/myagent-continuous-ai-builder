@@ -13,6 +13,8 @@ import json
 from loguru import logger
 from pydantic import BaseModel, Field
 import uuid
+import asyncpg
+import os
 
 # Import core components
 from core.orchestrator import ContinuousDirector, ProjectState
@@ -86,6 +88,7 @@ class WebSocketManager:
 # Global instances
 orchestrators: Dict[str, ContinuousDirector] = {}
 ws_manager = WebSocketManager()
+database_pool: Optional[asyncpg.Pool] = None
 
 
 @asynccontextmanager
@@ -93,17 +96,32 @@ async def lifespan(app: FastAPI):
     """Manage application lifecycle"""
     # Startup
     logger.info("Starting Continuous AI Builder API")
-    
-    # Initialize any global resources
-    
+
+    # Initialize database pool
+    global database_pool
+    try:
+        database_pool = await asyncpg.create_pool(
+            'postgresql://localhost:5432/myagent_db',
+            min_size=5,
+            max_size=20
+        )
+        logger.info("Database pool created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create database pool: {e}")
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down Continuous AI Builder API")
-    
+
     # Stop all orchestrators
     for orchestrator in orchestrators.values():
         await orchestrator.stop()
+
+    # Close database pool
+    if database_pool:
+        await database_pool.close()
+        logger.info("Database pool closed")
 
 
 # Create FastAPI app
@@ -142,8 +160,21 @@ async def create_project(
     background_tasks: BackgroundTasks
 ):
     """Create a new project and start continuous development"""
+    if not database_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
     project_id = str(uuid.uuid4())
     
+    # Insert into database
+    async with database_pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO projects (id, name, description, requirements, target_metrics, max_iterations)
+            VALUES ($1, $2, $3, $4, $5, $6)""",
+            project_id, project.name, project.description,
+            json.dumps(project.requirements), json.dumps(project.target_metrics),
+            project.max_iterations
+        )
+
     # Create orchestrator
     orchestrator = ContinuousDirector(
         project_name=project.name,
@@ -158,7 +189,7 @@ async def create_project(
     orchestrators[project_id] = orchestrator
     
     # Start orchestrator in background
-    background_tasks.add_task(orchestrator.run)
+    background_tasks.add_task(orchestrator.start)
     
     logger.info(f"Created project {project.name} with ID {project_id}")
     
@@ -185,9 +216,9 @@ async def list_projects():
             name=orchestrator.project_name,
             state=orchestrator.state.value,
             iteration=orchestrator.iteration_count,
-            metrics=orchestrator.metrics.to_dict(),
-            milestones=orchestrator.milestone_tracker.get_progress_summary(),
-            agents=[agent.get_status() for agent in orchestrator.agents.values()],
+            metrics=vars(orchestrator.metrics) if hasattr(orchestrator, 'metrics') else {},
+            milestones=orchestrator.milestone_tracker.get_progress_summary() if hasattr(orchestrator, 'milestone_tracker') else {},
+            agents=[],
             estimated_completion=None
         ))
     
