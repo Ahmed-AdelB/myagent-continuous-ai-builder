@@ -103,6 +103,20 @@ class QualityMetrics(BaseModel):
             self.security_score >= 95.0
         )
 
+    def to_dict(self) -> Dict:
+        """Convert metrics to dictionary for API responses"""
+        return {
+            "test_coverage": self.test_coverage,
+            "bug_count_critical": self.bug_count_critical,
+            "bug_count_minor": self.bug_count_minor,
+            "performance_score": self.performance_score,
+            "documentation_coverage": self.documentation_coverage,
+            "code_quality_score": self.code_quality_score,
+            "user_satisfaction": self.user_satisfaction,
+            "security_score": self.security_score,
+            "is_perfect": self.is_perfect()
+        }
+
 
 class ContinuousDirector:
     """
@@ -153,6 +167,9 @@ class ContinuousDirector:
             # Initialize all components
             await self._initialize_components()
 
+            # Start continuous quality monitor in background
+            asyncio.create_task(self.continuous_quality_monitor())
+
             # Main continuous loop
             while not self.stop_requested and not self.metrics.is_perfect():
                 if self.pause_requested:
@@ -191,10 +208,16 @@ class ContinuousDirector:
         from ..memory.project_ledger import ProjectLedger
         from ..memory.vector_memory import VectorMemory
         from ..memory.error_knowledge_graph import ErrorKnowledgeGraph
+        from .milestone_tracker import MilestoneTracker
+        from .progress_analyzer import ProgressAnalyzer
 
         self.project_ledger = ProjectLedger(self.project_name)
-        self.vector_memory = VectorMemory()
+        self.vector_memory = VectorMemory(project_name=self.project_name)
         self.error_graph = ErrorKnowledgeGraph()
+
+        # Initialize tracking components
+        self.milestone_tracker = MilestoneTracker(self.project_name)
+        self.progress_analyzer = ProgressAnalyzer(self.project_name)
 
         # Initialize agents
         await self._initialize_agents()
@@ -216,14 +239,14 @@ class ContinuousDirector:
         from ..agents.analyzer_agent import AnalyzerAgent
         from ..agents.ui_refiner_agent import UIRefinerAgent
 
-        # Initialize each agent
+        # Initialize each agent with the orchestrator reference
         self.agents = {
-            "coder": CoderAgent(self.project_name, self.vector_memory),
-            "tester": TesterAgent(self.project_name, self.project_ledger),
-            "debugger": DebuggerAgent(self.project_name, self.error_graph),
-            "architect": ArchitectAgent(self.project_name, self.project_spec),
-            "analyzer": AnalyzerAgent(self.project_name, self.metrics),
-            "ui_refiner": UIRefinerAgent(self.project_name, self.user_feedback_history)
+            "coder": CoderAgent(orchestrator=self),
+            "tester": TesterAgent(orchestrator=self),
+            "debugger": DebuggerAgent(orchestrator=self),
+            "architect": ArchitectAgent(orchestrator=self),
+            "analyzer": AnalyzerAgent(orchestrator=self),
+            "ui_refiner": UIRefinerAgent(orchestrator=self)
         }
 
         # Initialize all agents
@@ -426,3 +449,144 @@ class ContinuousDirector:
         """Stop the continuous development"""
         self.stop_requested = True
         logger.info("Stop requested")
+    async def _cleanup(self):
+        """Cleanup resources on shutdown"""
+        logger.info("Cleaning up resources...")
+        
+        # Save final checkpoint
+        await self._create_checkpoint()
+        
+        # Clean up agents
+        for agent in self.agents.values():
+            if hasattr(agent, 'cleanup'):
+                await agent.cleanup()
+        
+        logger.info("Cleanup completed")
+
+    async def continuous_quality_monitor(self):
+        """Continuously monitor quality metrics and trigger optimizations"""
+        logger.info("Starting continuous quality monitor...")
+
+        while self.is_running:
+            try:
+                metrics = self.metrics.to_dict()
+
+                # Check if metrics are below thresholds
+                if metrics["test_coverage"] < 95:
+                    logger.warning(f"Test coverage low: {metrics['test_coverage']}%")
+                    await self.trigger_test_intensification()
+
+                if metrics["performance_score"] < 90:
+                    logger.warning(f"Performance score low: {metrics['performance_score']}%")
+                    await self.trigger_performance_optimization()
+
+                if metrics["bug_count_critical"] > 0:
+                    logger.error(f"Critical bugs detected: {metrics['bug_count_critical']}")
+                    await self.emergency_debug_mode()
+
+                if metrics["documentation_coverage"] < 90:
+                    logger.warning(f"Documentation coverage low: {metrics['documentation_coverage']}%")
+                    await self.trigger_documentation_generation()
+
+                if metrics["security_score"] < 95:
+                    logger.warning(f"Security score low: {metrics['security_score']}%")
+                    await self.trigger_security_audit()
+
+                # Wait 5 minutes before next check
+                await asyncio.sleep(300)
+
+            except Exception as e:
+                logger.error(f"Error in quality monitor: {e}")
+                await asyncio.sleep(60)
+
+    async def trigger_test_intensification(self):
+        """Deploy tester agent to increase test coverage"""
+        if "tester" in self.agents:
+            task = DevelopmentTask(
+                id=f"test-intensification-{self.iteration_count}",
+                type="test_generation",
+                description="Generate additional tests to reach 95% coverage",
+                priority=9,
+                data={"target_coverage": 95, "current_coverage": self.metrics.test_coverage}
+            )
+            self.task_queue.insert(0, task)
+            logger.info("Triggered test intensification")
+
+    async def trigger_performance_optimization(self):
+        """Deploy analyzer agent to optimize performance"""
+        if "analyzer" in self.agents:
+            task = DevelopmentTask(
+                id=f"performance-opt-{self.iteration_count}",
+                type="performance_optimization",
+                description="Analyze and optimize performance bottlenecks",
+                priority=8,
+                data={"target_score": 90, "current_score": self.metrics.performance_score}
+            )
+            self.task_queue.insert(0, task)
+            logger.info("Triggered performance optimization")
+
+    async def emergency_debug_mode(self):
+        """Emergency mode when critical bugs are detected"""
+        logger.error("ENTERING EMERGENCY DEBUG MODE")
+        self.state = ProjectState.DEBUGGING
+
+        if "debugger" in self.agents:
+            task = DevelopmentTask(
+                id=f"emergency-debug-{self.iteration_count}",
+                type="emergency_debug",
+                description="Fix all critical bugs immediately",
+                priority=10,
+                data={"bug_count": self.metrics.bug_count_critical}
+            )
+            # Clear other tasks and focus on debugging
+            self.task_queue = [task]
+            logger.info("All tasks cleared - focusing on critical bug fixes")
+
+    async def trigger_documentation_generation(self):
+        """Generate missing documentation"""
+        if "coder" in self.agents:
+            task = DevelopmentTask(
+                id=f"doc-generation-{self.iteration_count}",
+                type="documentation",
+                description="Generate comprehensive documentation",
+                priority=6,
+                data={"target_coverage": 90, "current_coverage": self.metrics.documentation_coverage}
+            )
+            self.task_queue.append(task)
+            logger.info("Triggered documentation generation")
+
+    async def trigger_security_audit(self):
+        """Perform security audit and fixes"""
+        if "analyzer" in self.agents:
+            task = DevelopmentTask(
+                id=f"security-audit-{self.iteration_count}",
+                type="security_audit",
+                description="Perform security audit and implement fixes",
+                priority=9,
+                data={"target_score": 95, "current_score": self.metrics.security_score}
+            )
+            self.task_queue.insert(0, task)
+            logger.info("Triggered security audit")
+
+    def identify_weak_metrics(self) -> Dict[str, float]:
+        """Identify metrics that need improvement"""
+        weak_metrics = {}
+        metrics = self.metrics.to_dict()
+
+        thresholds = {
+            "test_coverage": 95,
+            "performance_score": 90,
+            "documentation_coverage": 90,
+            "security_score": 95,
+            "code_quality_score": 85,
+            "user_satisfaction": 90
+        }
+
+        for metric, threshold in thresholds.items():
+            if metric in metrics and metrics[metric] < threshold:
+                weak_metrics[metric] = metrics[metric]
+
+        if metrics["bug_count_critical"] > 0:
+            weak_metrics["bug_count_critical"] = metrics["bug_count_critical"]
+
+        return weak_metrics

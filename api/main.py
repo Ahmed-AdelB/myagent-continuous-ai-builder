@@ -216,7 +216,7 @@ async def list_projects():
             name=orchestrator.project_name,
             state=orchestrator.state.value,
             iteration=orchestrator.iteration_count,
-            metrics=vars(orchestrator.metrics) if hasattr(orchestrator, 'metrics') else {},
+            metrics=orchestrator.metrics.to_dict() if hasattr(orchestrator, 'metrics') else {},
             milestones=orchestrator.milestone_tracker.get_progress_summary() if hasattr(orchestrator, 'milestone_tracker') else {},
             agents=[],
             estimated_completion=None
@@ -425,9 +425,9 @@ async def search_memory(project_id: str, query: str):
     ]
 
 
-# WebSocket endpoint for real-time updates
+# WebSocket endpoint for real-time updates (with project ID)
 @app.websocket("/ws/{project_id}")
-async def websocket_endpoint(websocket: WebSocket, project_id: str):
+async def websocket_endpoint_with_project(websocket: WebSocket, project_id: str):
     """WebSocket connection for real-time project updates"""
     if project_id not in orchestrators:
         await websocket.close(code=4004, reason="Project not found")
@@ -476,6 +476,41 @@ async def websocket_endpoint(websocket: WebSocket, project_id: str):
         logger.error(f"WebSocket error: {e}")
     finally:
         ws_manager.disconnect(websocket, project_id)
+
+
+# WebSocket endpoint for general connection (without project ID)
+@app.websocket("/ws")
+async def websocket_endpoint_general(websocket: WebSocket):
+    """WebSocket connection for general updates (defaults to first project)"""
+    await websocket.accept()
+
+    try:
+        # Use first available project or wait for one
+        project_id = list(orchestrators.keys())[0] if orchestrators else "default"
+
+        if project_id == "default":
+            # No projects yet, just keep connection alive
+            while True:
+                try:
+                    data = await asyncio.wait_for(
+                        websocket.receive_text(),
+                        timeout=30.0
+                    )
+                    message = json.loads(data)
+                    if message.get("type") == "ping":
+                        await websocket.send_json({"type": "pong"})
+                except asyncio.TimeoutError:
+                    await websocket.send_json({"type": "heartbeat"})
+        else:
+            # Connect to first project
+            await ws_manager.connect(websocket, project_id)
+            await websocket_endpoint_with_project(websocket, project_id)
+
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        if project_id != "default":
+            ws_manager.disconnect(websocket, project_id)
 
 
 # Code endpoints
