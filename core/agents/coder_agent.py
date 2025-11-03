@@ -10,10 +10,10 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 from pathlib import Path
 from loguru import logger
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
-from langchain.schema import BaseOutputParser
-from langchain.callbacks import AsyncCallbackHandler
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain_core.output_parsers import BaseOutputParser
+from langchain_core.callbacks import AsyncCallbackHandler
 
 from .base_agent import PersistentAgent, AgentTask, AgentState
 
