@@ -1,0 +1,14 @@
+{
+  "model": "gpt-5-chat-latest",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are GPT-5, expert in continuous AI development systems."
+    },
+    {
+      "role": "user",
+      "content": "Design an AI app builder that works CONTINUOUSLY until the app is perfect, NOT a 5-minute generator.\n\nKey Requirements:\n1. Persistent development - keeps working on the app over days/weeks\n2. Iterative improvement - learns from errors and user feedback\n3. Never gives up - debugs, fixes, refactors until it works\n4. Memory across sessions - remembers all context\n5. Self-testing and validation\n6. Continuous refinement based on user needs\n\nCompetitors: Base44, Emergent, Lovable, Bolt, CodeConductor\n\nProvide:\n1. Architecture for continuous development\n2. Agent persistence strategy\n3. Error recovery and learning system\n4. Long-term memory design\n5. Iterative improvement workflow\n6. How to ensure eventual success"
+    }
+  ],
+  "max_tokens": 2500
+}
