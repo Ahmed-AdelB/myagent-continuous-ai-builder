@@ -1,0 +1,167 @@
+.metrics-panel {
+  padding: 20px;
+}
+
+.metrics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.metrics-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.metrics-controls {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.metric-selector {
+  padding: 8px 16px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+}
+
+.time-range-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.range-btn {
+  padding: 8px 16px;
+  border: 1px solid #dee2e6;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.range-btn:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.range-btn:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.range-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.metrics-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.metric-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.metric-card h4 {
+  margin: 0 0 10px 0;
+  color: #666;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.metric-value {
+  font-size: 32px;
+  font-weight: bold;
+  color: #333;
+}
+
+.metric-change {
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.metric-change.positive {
+  color: #28a745;
+}
+
+.metric-change.negative {
+  color: #dc3545;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.chart-container {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  height: 400px;
+}
+
+.chart-container.main-chart {
+  grid-column: span 2;
+}
+
+.chart-container h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.metrics-insights {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.metrics-insights h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+}
+
+.insights-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.insight {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+}
+
+.insight.positive {
+  background: #d4edda;
+  color: #155724;
+}
+
+.insight.warning {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.insight.info {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.insight-icon {
+  margin-right: 12px;
+  font-size: 20px;
+}
