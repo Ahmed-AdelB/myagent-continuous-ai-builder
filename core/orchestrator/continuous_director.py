@@ -250,9 +250,10 @@ class ContinuousDirector:
             "ui_refiner": UIRefinerAgent(orchestrator=self)
         }
 
-        # Initialize all agents
+        # Initialize all agents (if they have initialize method)
         for agent_name, agent in self.agents.items():
-            await agent.initialize()
+            if hasattr(agent, 'initialize'):
+                await agent.initialize()
             logger.info(f"Initialized agent: {agent_name}")
 
     async def _execute_iteration(self):
