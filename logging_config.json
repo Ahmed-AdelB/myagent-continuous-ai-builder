@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "default": {
+      "format": "[{time:YYYY-MM-DD HH:mm:ss}] {level} | {name}:{function}:{line} - {message}",
+      "style": "{"
+    }
+  },
+  "handlers": {
+    "console": {
+      "class": "logging.StreamHandler",
+      "formatter": "default",
+      "level": "INFO"
+    },
+    "file": {
+      "class": "logging.FileHandler",
+      "filename": "logs/myagent.log",
+      "formatter": "default",
+      "level": "DEBUG"
+    }
+  },
+  "root": {
+    "level": "DEBUG",
+    "handlers": [
+      "console",
+      "file"
+    ]
+  }
+}

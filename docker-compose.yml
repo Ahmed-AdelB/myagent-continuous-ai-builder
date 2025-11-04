@@ -1,0 +1,216 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: myagent-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: myagent_db
+      POSTGRES_USER: myagent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-myagent_secure_pass}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myagent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aibuilder-network
+
+  # Redis Message Queue
+  redis:
+    image: redis:7-alpine
+    container_name: myagent-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_pass}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aibuilder-network
+
+  # ChromaDB for Vector Storage
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: myagent-chromadb
+    restart: unless-stopped
+    environment:
+      CHROMA_SERVER_AUTH_PROVIDER: "chromadb.auth.token_authn.TokenAuthenticationServerProvider"
+      CHROMA_SERVER_AUTH_CREDENTIALS: ${CHROMA_TOKEN:-chroma_secure_token}
+      CHROMA_SERVER_AUTH_TOKEN_TRANSPORT_HEADER: "AUTHORIZATION"
+      PERSIST_DIRECTORY: /chroma/data
+    volumes:
+      - chroma_data:/chroma/data
+    ports:
+      - "8001:8000"
+    networks:
+      - aibuilder-network
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: myagent-backend
+    restart: unless-stopped
+    environment:
+      # Database
+      DATABASE_URL: postgresql://myagent:${POSTGRES_PASSWORD:-myagent_secure_pass}@postgres:5432/myagent_db
+      REDIS_URL: redis://default:${REDIS_PASSWORD:-redis_secure_pass}@redis:6379
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      CHROMA_TOKEN: ${CHROMA_TOKEN:-chroma_secure_token}
+      
+      # API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      
+      # Application Settings
+      ENV: ${ENV:-development}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      MAX_ITERATIONS: ${MAX_ITERATIONS:-1000}
+      CHECKPOINT_INTERVAL: ${CHECKPOINT_INTERVAL:-10}
+    volumes:
+      - ./persistence:/app/persistence
+      - ./logs:/app/logs
+      - ./core:/app/core:ro
+      - ./api:/app/api:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - aibuilder-network
+
+  # Frontend (Development)
+  frontend-dev:
+    image: node:18-alpine
+    container_name: myagent-frontend-dev
+    working_dir: /app
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_WS_URL: ws://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    profiles:
+      - dev
+    networks:
+      - aibuilder-network
+
+  # Nginx (Production)
+  nginx:
+    image: nginx:alpine
+    container_name: myagent-nginx
+    restart: unless-stopped
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    profiles:
+      - prod
+    networks:
+      - aibuilder-network
+
+  # Monitoring - Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: myagent-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    profiles:
+      - monitoring
+    networks:
+      - aibuilder-network
+
+  # Monitoring - Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: myagent-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+    networks:
+      - aibuilder-network
+
+  # Backup Service
+  backup:
+    image: postgres:15-alpine
+    container_name: myagent-backup
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-myagent_secure_pass}
+    volumes:
+      - ./backups:/backups
+    command: >
+      sh -c "while true; do
+        pg_dump -h postgres -U myagent myagent_db > /backups/backup_$$(date +%Y%m%d_%H%M%S).sql;
+        find /backups -name 'backup_*.sql' -mtime +7 -delete;
+        sleep 86400;
+      done"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - backup
+    networks:
+      - aibuilder-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  aibuilder-network:
+    driver: bridge

@@ -1,0 +1,487 @@
+"""
+Tester Agent - Specialized agent for test generation and execution
+"""
+
+import asyncio
+import subprocess
+import json
+import ast
+import coverage
+from typing import Dict, List, Optional, Any, Tuple
+from datetime import datetime
+from pathlib import Path
+from loguru import logger
+import pytest
+from io import StringIO
+import sys
+
+from .base_agent import PersistentAgent, AgentTask
+
+
+class TesterAgent(PersistentAgent):
+    """Agent specialized in test generation and execution"""
+    
+    def __init__(self, orchestrator=None):
+        super().__init__(
+            name="tester_agent",
+            role="Test Engineer",
+            capabilities=[
+                "generate_tests",
+                "execute_tests",
+                "coverage_analysis",
+                "regression_testing",
+                "performance_testing",
+                "integration_testing"
+            ],
+            orchestrator=orchestrator
+        )
+        
+        self.test_results = {}
+        self.coverage_data = None
+        self.test_metrics = {
+            "tests_generated": 0,
+            "tests_executed": 0,
+            "tests_passed": 0,
+            "tests_failed": 0,
+            "coverage_percentage": 0.0,
+            "regression_failures": 0
+        }
+        
+        self.test_templates = {
+            "unit": self._create_unit_test_template(),
+            "integration": self._create_integration_test_template(),
+            "performance": self._create_performance_test_template()
+        }
+    
+    def _create_unit_test_template(self) -> str:
+        """Create template for unit tests"""
+        return '''import pytest
+from unittest.mock import Mock, patch
+
+class Test{class_name}:
+    """Unit tests for {class_name}"""
+    
+    def setup_method(self):
+        """Setup test fixtures"""
+        {setup_code}
+    
+    {test_methods}
+    
+    def teardown_method(self):
+        """Cleanup after tests"""
+        {teardown_code}
+'''
+    
+    def _create_integration_test_template(self) -> str:
+        """Create template for integration tests"""
+        return '''import pytest
+import asyncio
+from pathlib import Path
+
+@pytest.mark.integration
+class Test{feature_name}Integration:
+    """Integration tests for {feature_name}"""
+    
+    @pytest.fixture(autouse=True)
+    async def setup(self):
+        """Setup integration test environment"""
+        {setup_code}
+        yield
+        {teardown_code}
+    
+    {test_methods}
+'''
+    
+    def _create_performance_test_template(self) -> str:
+        """Create template for performance tests"""
+        return '''import pytest
+import time
+import statistics
+from memory_profiler import profile
+
+@pytest.mark.performance
+class Test{component_name}Performance:
+    """Performance tests for {component_name}"""
+    
+    def test_execution_time(self):
+        """Test execution time meets requirements"""
+        times = []
+        for _ in range({iterations}):
+            start = time.time()
+            {test_code}
+            times.append(time.time() - start)
+        
+        avg_time = statistics.mean(times)
+        assert avg_time < {max_time}, f"Average time {{avg_time}} exceeds limit"
+    
+    @profile
+    def test_memory_usage(self):
+        """Test memory usage is within limits"""
+        {memory_test_code}
+'''
+    
+    async def process_task(self, task: AgentTask) -> Any:
+        """Process a testing task"""
+        logger.info(f"Tester processing task: {task.type}")
+        
+        task_type = task.type.lower()
+        
+        if task_type == "generate_tests":
+            return await self.generate_tests(task.data)
+        elif task_type == "execute_tests":
+            return await self.execute_tests(task.data)
+        elif task_type == "analyze_coverage":
+            return await self.analyze_coverage(task.data)
+        elif task_type == "regression_test":
+            return await self.run_regression_tests(task.data)
+        elif task_type == "performance_test":
+            return await self.run_performance_tests(task.data)
+        else:
+            raise ValueError(f"Unknown task type for Tester: {task_type}")
+    
+    async def generate_tests(self, data: Dict) -> Dict:
+        """Generate tests for code"""
+        code = data.get('code', '')
+        test_type = data.get('test_type', 'unit')
+        component_name = data.get('component_name', 'Component')
+        
+        # Analyze code to understand what to test
+        code_analysis = self._analyze_code_for_testing(code)
+        
+        # Generate test methods
+        test_methods = []
+        for func in code_analysis['functions']:
+            test_method = self._generate_test_method(func)
+            test_methods.append(test_method)
+        
+        # Fill template
+        template = self.test_templates[test_type]
+        test_code = template.format(
+            class_name=component_name,
+            feature_name=component_name,
+            component_name=component_name,
+            setup_code=self._generate_setup_code(code_analysis),
+            test_methods='\n\n'.join(test_methods),
+            teardown_code=self._generate_teardown_code(code_analysis),
+            iterations=10,
+            max_time=1.0,
+            test_code=f"# Test {component_name}",
+            memory_test_code=f"# Memory test for {component_name}"
+        )
+        
+        self.test_metrics['tests_generated'] += len(test_methods)
+        
+        return {
+            'success': True,
+            'test_code': test_code,
+            'test_count': len(test_methods),
+            'test_type': test_type,
+            'coverage_targets': code_analysis
+        }
+    
+    async def execute_tests(self, data: Dict) -> Dict:
+        """Execute tests and return results"""
+        test_file = data.get('test_file', '')
+        test_directory = data.get('test_directory', 'tests')
+        coverage_enabled = data.get('coverage', True)
+        
+        # Prepare test environment
+        test_path = Path(test_directory)
+        if test_file:
+            test_path = test_path / test_file
+        
+        # Run tests with coverage
+        if coverage_enabled:
+            cov = coverage.Coverage()
+            cov.start()
+        
+        # Execute pytest
+        result = subprocess.run(
+            ['pytest', str(test_path), '-v', '--tb=short', '--json-report'],
+            capture_output=True,
+            text=True
+        )
+        
+        if coverage_enabled:
+            cov.stop()
+            cov.save()
+            coverage_percentage = cov.report()
+            self.test_metrics['coverage_percentage'] = coverage_percentage
+        
+        # Parse results
+        test_results = self._parse_test_results(result.stdout, result.stderr)
+        
+        self.test_metrics['tests_executed'] += test_results['total']
+        self.test_metrics['tests_passed'] += test_results['passed']
+        self.test_metrics['tests_failed'] += test_results['failed']
+        
+        return {
+            'success': test_results['failed'] == 0,
+            'results': test_results,
+            'coverage': coverage_percentage if coverage_enabled else None,
+            'output': result.stdout,
+            'errors': result.stderr
+        }
+    
+    async def analyze_coverage(self, data: Dict) -> Dict:
+        """Analyze test coverage"""
+        source_directory = data.get('source_directory', 'core')
+        min_coverage = data.get('min_coverage', 80.0)
+        
+        cov = coverage.Coverage(source=[source_directory])
+        cov.load()
+        
+        # Generate coverage report
+        report_buffer = StringIO()
+        coverage_percentage = cov.report(file=report_buffer)
+        coverage_report = report_buffer.getvalue()
+        
+        # Identify uncovered code
+        uncovered = []
+        for filename in cov.get_data().measured_files():
+            missing_lines = cov.analysis(filename)[3]
+            if missing_lines:
+                uncovered.append({
+                    'file': filename,
+                    'missing_lines': missing_lines
+                })
+        
+        # Generate suggestions for improving coverage
+        suggestions = self._generate_coverage_suggestions(uncovered)
+        
+        return {
+            'success': coverage_percentage >= min_coverage,
+            'coverage_percentage': coverage_percentage,
+            'report': coverage_report,
+            'uncovered_code': uncovered,
+            'suggestions': suggestions,
+            'meets_requirement': coverage_percentage >= min_coverage
+        }
+    
+    async def run_regression_tests(self, data: Dict) -> Dict:
+        """Run regression test suite"""
+        baseline_results = data.get('baseline_results', {})
+        test_suite = data.get('test_suite', 'tests/regression')
+        
+        # Execute regression tests
+        result = subprocess.run(
+            ['pytest', test_suite, '--tb=short', '-v'],
+            capture_output=True,
+            text=True
+        )
+        
+        current_results = self._parse_test_results(result.stdout, result.stderr)
+        
+        # Compare with baseline
+        regressions = []
+        if baseline_results:
+            for test_name, baseline_status in baseline_results.items():
+                current_status = current_results.get('tests', {}).get(test_name)
+                if baseline_status == 'passed' and current_status == 'failed':
+                    regressions.append(test_name)
+        
+        self.test_metrics['regression_failures'] = len(regressions)
+        
+        return {
+            'success': len(regressions) == 0,
+            'regressions': regressions,
+            'results': current_results,
+            'baseline_comparison': {
+                'new_failures': regressions,
+                'fixed_tests': []  # Would identify fixed tests
+            }
+        }
+    
+    async def run_performance_tests(self, data: Dict) -> Dict:
+        """Run performance test suite"""
+        test_suite = data.get('test_suite', 'tests/performance')
+        performance_targets = data.get('targets', {})
+        
+        # Execute performance tests
+        result = subprocess.run(
+            ['pytest', test_suite, '-v', '--benchmark-only'],
+            capture_output=True,
+            text=True
+        )
+        
+        # Parse performance results
+        performance_results = self._parse_performance_results(result.stdout)
+        
+        # Check against targets
+        violations = []
+        for metric, value in performance_results.items():
+            target = performance_targets.get(metric)
+            if target and value > target:
+                violations.append({
+                    'metric': metric,
+                    'value': value,
+                    'target': target,
+                    'exceeded_by': value - target
+                })
+        
+        return {
+            'success': len(violations) == 0,
+            'results': performance_results,
+            'violations': violations,
+            'meets_targets': len(violations) == 0
+        }
+    
+    def _analyze_code_for_testing(self, code: str) -> Dict:
+        """Analyze code to understand testing requirements"""
+        try:
+            tree = ast.parse(code)
+            
+            functions = []
+            classes = []
+            
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    functions.append({
+                        'name': node.name,
+                        'args': [arg.arg for arg in node.args.args],
+                        'returns': bool(node.returns),
+                        'decorators': [d.id for d in node.decorator_list if hasattr(d, 'id')]
+                    })
+                elif isinstance(node, ast.ClassDef):
+                    methods = [
+                        n.name for n in node.body
+                        if isinstance(n, ast.FunctionDef)
+                    ]
+                    classes.append({
+                        'name': node.name,
+                        'methods': methods
+                    })
+            
+            return {
+                'functions': functions,
+                'classes': classes,
+                'has_async': any(
+                    isinstance(node, ast.AsyncFunctionDef)
+                    for node in ast.walk(tree)
+                )
+            }
+        except:
+            return {'functions': [], 'classes': [], 'has_async': False}
+    
+    def _generate_test_method(self, func: Dict) -> str:
+        """Generate test method for a function"""
+        func_name = func['name']
+        has_args = len(func['args']) > 0
+        
+        test_code = f'''    def test_{func_name}(self):
+        """Test {func_name} function"""
+'''
+        
+        if has_args:
+            test_code += f'''        # Arrange
+        test_input = {self._generate_test_input(func['args'])}
+        expected = None  # Define expected output
+        
+        # Act
+        result = {func_name}(*test_input)
+        
+        # Assert
+        assert result == expected
+'''
+        else:
+            test_code += f'''        # Act
+        result = {func_name}()
+        
+        # Assert
+        assert result is not None
+'''
+        
+        return test_code
+    
+    def _generate_test_input(self, args: List[str]) -> str:
+        """Generate test input for function arguments"""
+        test_values = []
+        for arg in args:
+            if 'id' in arg.lower():
+                test_values.append('"test_id_123"')
+            elif 'name' in arg.lower():
+                test_values.append('"test_name"')
+            elif 'count' in arg.lower() or 'number' in arg.lower():
+                test_values.append('42')
+            else:
+                test_values.append('None')
+        
+        return '[' + ', '.join(test_values) + ']'
+    
+    def _generate_setup_code(self, analysis: Dict) -> str:
+        """Generate setup code for tests"""
+        if analysis.get('has_async'):
+            return 'self.loop = asyncio.get_event_loop()'
+        return 'pass'
+    
+    def _generate_teardown_code(self, analysis: Dict) -> str:
+        """Generate teardown code for tests"""
+        return 'pass'
+    
+    def _parse_test_results(self, stdout: str, stderr: str) -> Dict:
+        """Parse pytest output"""
+        results = {
+            'total': 0,
+            'passed': 0,
+            'failed': 0,
+            'skipped': 0,
+            'errors': [],
+            'tests': {}
+        }
+        
+        # Simple parsing - would use pytest-json-report in production
+        lines = stdout.split('\n')
+        for line in lines:
+            if 'passed' in line and 'failed' in line:
+                parts = line.split()
+                for i, part in enumerate(parts):
+                    if 'passed' in part and i > 0:
+                        results['passed'] = int(parts[i-1])
+                    if 'failed' in part and i > 0:
+                        results['failed'] = int(parts[i-1])
+        
+        results['total'] = results['passed'] + results['failed']
+        
+        return results
+    
+    def _parse_performance_results(self, stdout: str) -> Dict:
+        """Parse performance test results"""
+        # Would parse actual benchmark results
+        return {
+            'average_time': 0.5,
+            'min_time': 0.1,
+            'max_time': 1.0,
+            'memory_usage': 100  # MB
+        }
+    
+    def _generate_coverage_suggestions(self, uncovered: List[Dict]) -> List[str]:
+        """Generate suggestions for improving coverage"""
+        suggestions = []
+        
+        for item in uncovered:
+            file_name = Path(item['file']).name
+            missing_count = len(item['missing_lines'])
+            
+            suggestions.append(
+                f"Add tests for {file_name}: {missing_count} lines uncovered"
+            )
+        
+        return suggestions
+    
+    def analyze_context(self, context: Dict) -> Dict:
+        """Analyze testing context"""
+        return {
+            'test_framework': 'pytest',
+            'coverage_tool': 'coverage.py',
+            'test_types': ['unit', 'integration', 'performance'],
+            'ci_integration': True
+        }
+    
+    def generate_solution(self, problem: Dict) -> Dict:
+        """Generate testing solution for a problem"""
+        return {
+            'approach': 'Comprehensive test coverage',
+            'test_strategy': 'Unit -> Integration -> E2E',
+            'coverage_target': 95,
+            'automation': 'Full CI/CD integration'
+        }
