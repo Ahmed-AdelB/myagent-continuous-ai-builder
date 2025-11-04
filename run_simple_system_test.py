@@ -25,13 +25,13 @@ async def run_simple_test():
     print("╔" + "=" * 78 + "╗")
     print("║" + " " * 78 + "║")
     print("║" + "  MyAgent - FULL SYSTEM EXECUTION TEST".center(78) + "║")
-    print("║" + "  Real GPT-4 Code Generation with Multi-Agent Coordination".center(78) + "║")
+    print("║" + "  Real GPT-5 Code Generation with Multi-Agent Coordination".center(78) + "║")
     print("║" + " " * 78 + "║")
     print("╚" + "=" * 78 + "╝")
     print()
 
     start_time = datetime.now()
-    print(f"🔍 Model: GPT-4 (OpenAI)")
+    print(f"🔍 Model: GPT-5 (OpenAI)")
     print(f"📅 Start Time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"🔑 API Key: {settings.OPENAI_API_KEY[:20]}... [LOADED]")
     print()
@@ -57,7 +57,7 @@ async def run_simple_test():
     try:
         # STEP 1: Initialize CoderAgent and generate calculator module
         print("=" * 80)
-        print("STEP 1/3: CODE GENERATION (CoderAgent + GPT-4)")
+        print("STEP 1/3: CODE GENERATION (CoderAgent + GPT-5)")
         print("=" * 80)
 
         coder = CoderAgent()
@@ -99,7 +99,7 @@ async def run_simple_test():
             created_at=datetime.now()
         )
 
-        print("💻 Calling GPT-4 to generate calculator module...")
+        print("💻 Calling GPT-5 to generate calculator module...")
         print("   (This takes 15-30 seconds)")
         print()
 
@@ -121,7 +121,7 @@ async def run_simple_test():
             print()
 
             if 'explanation' in code_result:
-                print("💡 GPT-4 Explanation:")
+                print("💡 GPT-5 Explanation:")
                 print(f"   {code_result['explanation'][:400]}")
                 if len(code_result['explanation']) > 400:
                     print("   ...")
@@ -132,7 +132,7 @@ async def run_simple_test():
 
         # STEP 2: Generate tests with TesterAgent
         print("=" * 80)
-        print("STEP 2/3: TEST GENERATION (TesterAgent + GPT-4)")
+        print("STEP 2/3: TEST GENERATION (TesterAgent + GPT-5)")
         print("=" * 80)
 
         tester = TesterAgent()
@@ -155,7 +155,7 @@ async def run_simple_test():
             created_at=datetime.now()
         )
 
-        print("🧪 Calling GPT-4 to generate unit tests...")
+        print("🧪 Calling GPT-5 to generate unit tests...")
         print("   (This takes 15-30 seconds)")
         print()
 
@@ -187,7 +187,7 @@ async def run_simple_test():
 
         # STEP 3: Quality analysis
         print("=" * 80)
-        print("STEP 3/3: QUALITY ANALYSIS (AnalyzerAgent + GPT-4)")
+        print("STEP 3/3: QUALITY ANALYSIS (AnalyzerAgent + GPT-5)")
         print("=" * 80)
 
         analyzer = AnalyzerAgent()
@@ -207,7 +207,7 @@ async def run_simple_test():
             created_at=datetime.now()
         )
 
-        print("📊 Calling GPT-4 to analyze code quality...")
+        print("📊 Calling GPT-5 to analyze code quality...")
         print("   (This takes 10-20 seconds)")
         print()
 
@@ -285,7 +285,7 @@ async def run_simple_test():
         print("       - Each agent performed specialized task")
         print("       - Seamless data flow between agents")
         print()
-        print("  ✅ 2. Real GPT-4 Code Generation")
+        print("  ✅ 2. Real GPT-5 Code Generation")
         print(f"       - Generated {len(str(calculator_code))} chars of production code")
         print("       - Includes type hints, docstrings, error handling")
         print("       - Follows Python best practices")
@@ -303,7 +303,7 @@ async def run_simple_test():
         print()
         print("📈 Performance:")
         print(f"   • Total Execution Time: {duration:.1f} seconds")
-        print(f"   • GPT-4 API Calls: 3 (all successful)")
+        print(f"   • GPT-5 API Calls: 3 (all successful)")
         print(f"   • Files Generated: 2-3")
         print(f"   • Agents Utilized: 3")
         print()
@@ -323,7 +323,7 @@ async def run_simple_test():
 if __name__ == "__main__":
     print("\n" + "🚀" * 40)
     print("\nMyAgent Full System Execution Test")
-    print("Demonstrating real multi-agent coordination with GPT-4")
+    print("Demonstrating real multi-agent coordination with GPT-5")
     print("\n" + "🚀" * 40 + "\n")
 
     success = asyncio.run(run_simple_test())

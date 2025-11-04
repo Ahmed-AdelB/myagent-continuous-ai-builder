@@ -85,7 +85,7 @@ class CoderAgent(PersistentAgent):
         # Initialize LangChain components
         from config.settings import settings
         self.llm = ChatOpenAI(
-            model="gpt-4",
+            model="gpt-5-chat-latest",
             temperature=0.3,
             max_tokens=2000,
             openai_api_key=settings.OPENAI_API_KEY

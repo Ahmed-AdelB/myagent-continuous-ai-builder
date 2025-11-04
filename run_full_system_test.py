@@ -26,7 +26,7 @@ async def run_full_system():
     print("╚" + "=" * 78 + "╝")
     print()
 
-    print(f"🔍 Model: GPT-4 (OpenAI)")
+    print(f"🔍 Model: GPT-5 (OpenAI)")
     print(f"📅 Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"🔑 API Key: {settings.OPENAI_API_KEY[:20]}... [LOADED]")
     print()
@@ -175,7 +175,7 @@ async def run_full_system():
             )
 
             print("💻 Generating calculator module code...")
-            print("   (This will take 15-30 seconds - calling GPT-4 API)")
+            print("   (This will take 15-30 seconds - calling GPT-5 API)")
 
             code_result = await coder.process_task(code_task)
 
@@ -235,7 +235,7 @@ async def run_full_system():
             )
 
             print("🧪 Generating unit tests...")
-            print("   (This will take 15-30 seconds - calling GPT-4 API)")
+            print("   (This will take 15-30 seconds - calling GPT-5 API)")
 
             test_result = await tester.process_task(test_task)
 
@@ -318,7 +318,7 @@ async def run_full_system():
 
         print(f"\n🎯 What Was Demonstrated:")
         print(f"   ✅ Multi-agent coordination working")
-        print(f"   ✅ Real GPT-4 code generation successful")
+        print(f"   ✅ Real GPT-5 code generation successful")
         print(f"   ✅ Architect agent analyzed requirements")
         print(f"   ✅ Coder agent generated production code")
         print(f"   ✅ Tester agent created unit tests")
@@ -358,7 +358,7 @@ async def run_full_system():
 if __name__ == "__main__":
     print("\n" + "🚀" * 40)
     print("\nStarting FULL SYSTEM TEST...")
-    print("This will take 1-2 minutes as it makes real GPT-4 API calls.")
+    print("This will take 1-2 minutes as it makes real GPT-5 API calls.")
     print("\n" + "🚀" * 40 + "\n")
 
     success = asyncio.run(run_full_system())

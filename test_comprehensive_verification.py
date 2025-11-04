@@ -328,7 +328,7 @@ async def main():
     print("║" + "  COMPREHENSIVE SYSTEM VERIFICATION".center(68) + "║")
     print("║" + " " * 68 + "║")
     print("╚" + "=" * 68 + "╝")
-    print(f"\n🔍 Using model: GPT-4 (latest available from OpenAI)")
+    print(f"\n🔍 Using model: GPT-5 (latest available from OpenAI)")
     print(f"📅 Verification Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     results = []
@@ -368,7 +368,7 @@ async def main():
         print("\n" + "🎉" * 20)
         print("\n✅ System is ready for production use!")
         print("✅ All claims about system functionality are VERIFIED")
-        print("✅ GPT-4 API integration confirmed working")
+        print("✅ GPT-5 API integration confirmed working")
         return True
     else:
         print(f"\n⚠️  {total - passed} test suite(s) failed")

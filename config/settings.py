@@ -57,7 +57,7 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     DEFAULT_LLM_PROVIDER: str = Field(default="openai", env="DEFAULT_LLM_PROVIDER")
-    DEFAULT_MODEL: str = Field(default="gpt-4", env="DEFAULT_MODEL")
+    DEFAULT_MODEL: str = Field(default="gpt-5-chat-latest", env="DEFAULT_MODEL")
     LLM_TEMPERATURE: float = Field(default=0.7, env="LLM_TEMPERATURE")
     LLM_MAX_TOKENS: int = Field(default=2000, env="LLM_MAX_TOKENS")
 
