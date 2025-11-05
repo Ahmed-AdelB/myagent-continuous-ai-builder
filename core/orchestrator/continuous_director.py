@@ -332,7 +332,7 @@ class ContinuousDirector:
                 logger.info(f"Assigning task {task.id} to agent {agent}")
 
                 # Execute task
-                result = await self.agents[agent].execute_task(task)
+                result = await self.agents[agent].process_task(task)
 
                 # Update task status
                 task.completed_at = datetime.now()
@@ -458,7 +458,7 @@ class ContinuousDirector:
             )
 
             # Execute tests
-            result = await self.agents["tester"].execute_task(task)
+            result = await self.agents["tester"].process_task(task)
 
             # Update metrics
             if result and "coverage" in result:
@@ -488,7 +488,7 @@ class ContinuousDirector:
                     data={"failure_info": failure}
                 )
 
-                result = await self.agents["debugger"].execute_task(task)
+                result = await self.agents["debugger"].process_task(task)
 
                 if result and result.get("fixed"):
                     logger.success(f"Fixed failure: {failure.get('test_name')}")
@@ -514,7 +514,7 @@ class ContinuousDirector:
                 data={"current_score": self.metrics.performance_score}
             )
 
-            result = await self.agents["analyzer"].execute_task(task)
+            result = await self.agents["analyzer"].process_task(task)
 
             if result and "performance_score" in result:
                 self.metrics.performance_score = result["performance_score"]
@@ -536,7 +536,7 @@ class ContinuousDirector:
                 data={"current_metrics": self.metrics.dict()}
             )
 
-            result = await self.agents["analyzer"].execute_task(task)
+            result = await self.agents["analyzer"].process_task(task)
 
             if result:
                 # Update all metrics from validation
@@ -847,7 +847,7 @@ class ContinuousDirector:
                 id=f"test-intensification-{self.iteration_count}",
                 type="test_generation",
                 description="Generate additional tests to reach 95% coverage",
-                priority=9,
+                priority=TaskPriority.HIGH,
                 data={"target_coverage": 95, "current_coverage": self.metrics.test_coverage}
             )
             self.task_queue.insert(0, task)
@@ -860,7 +860,7 @@ class ContinuousDirector:
                 id=f"performance-opt-{self.iteration_count}",
                 type="performance_optimization",
                 description="Analyze and optimize performance bottlenecks",
-                priority=8,
+                priority=TaskPriority.HIGH,
                 data={"target_score": 90, "current_score": self.metrics.performance_score}
             )
             self.task_queue.insert(0, task)
@@ -876,7 +876,7 @@ class ContinuousDirector:
                 id=f"emergency-debug-{self.iteration_count}",
                 type="emergency_debug",
                 description="Fix all critical bugs immediately",
-                priority=10,
+                priority=TaskPriority.CRITICAL,
                 data={"bug_count": self.metrics.bug_count_critical}
             )
             # Clear other tasks and focus on debugging
@@ -890,7 +890,7 @@ class ContinuousDirector:
                 id=f"doc-generation-{self.iteration_count}",
                 type="documentation",
                 description="Generate comprehensive documentation",
-                priority=6,
+                priority=TaskPriority.NORMAL,
                 data={"target_coverage": 90, "current_coverage": self.metrics.documentation_coverage}
             )
             self.task_queue.append(task)
@@ -903,7 +903,7 @@ class ContinuousDirector:
                 id=f"security-audit-{self.iteration_count}",
                 type="security_audit",
                 description="Perform security audit and implement fixes",
-                priority=9,
+                priority=TaskPriority.HIGH,
                 data={"target_score": 95, "current_score": self.metrics.security_score}
             )
             self.task_queue.insert(0, task)
