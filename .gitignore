@@ -49,3 +49,4 @@ persistence/vector_memory/chroma.sqlite3
 
 # Temporary files
 tmp/
+.env
