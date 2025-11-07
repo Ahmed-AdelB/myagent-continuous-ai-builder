@@ -492,3 +492,92 @@ python3 scripts/force_iteration.py {project_id}
 - **Documentation**: `/docs/ARCHITECTURE.md`, `TECHNICAL_REFERENCE.md`, `README.md`
 - **Inspiration**: Base44.com (all-in-one AI builder), Emergent.sh (multi-agent #1 on SWE-Bench)
 - **API Docs**: Available at http://localhost:8000/docs when API is running
+
+## GitHub Workflow & Auto-Sync 🐙
+
+### Repository Information
+- **GitHub Repository**: https://github.com/Ahmed-AdelB/myagent-continuous-ai-builder
+- **Main Branch**: main 
+- **Authentication**: GitHub CLI (gh) configured as Ahmed-AdelB
+
+### Auto-Sync System
+The project includes a complete auto-sync system that automatically commits and pushes changes to GitHub:
+
+#### Manual Sync Commands
+```bash
+# Immediate sync to GitHub
+./auto-sync.sh
+
+# Quick sync alias (after running setup)
+sync
+```
+
+#### Automatic Sync Features
+1. **Post-Commit Hook**: Automatically pushes to GitHub after every `git commit`
+2. **Manual Sync Script**: `./auto-sync.sh` for on-demand synchronization
+3. **Shell Alias**: `sync` command for quick access
+4. **Optional Cron Job**: Periodic sync every 30 minutes during work hours
+
+#### Setup Scripts
+```bash
+# Initial auto-sync setup (already completed)
+python setup_github_autosync.py
+
+# Add sync command to shell
+./setup-sync-command.sh
+
+# Enable automatic periodic sync (optional)
+./setup-auto-sync-cron.sh
+```
+
+### Git Workflow
+```bash
+# Standard git workflow with auto-push
+git add .
+git commit -m "Your commit message"
+# Auto-push happens via post-commit hook
+
+# Manual sync if needed
+./auto-sync.sh
+```
+
+### Monitoring Sync Status
+```bash
+# Check git status
+git status
+
+# View recent commits
+git log --oneline -5
+
+# Check GitHub CLI authentication
+gh auth status
+
+# View cron jobs (if enabled)
+crontab -l
+```
+
+### Sync Script Details
+- **auto-sync.sh**: Main synchronization script
+  - Detects changes with `git status --porcelain`
+  - Commits with timestamp and Claude Code attribution
+  - Pushes to `origin master:main`
+  - Provides feedback on sync status
+
+### Troubleshooting Sync Issues
+```bash
+# Re-authenticate GitHub CLI if needed
+gh auth login
+
+# Check remote repository connection
+git remote -v
+
+# Test manual push
+git push origin master:main
+
+# Recreate post-commit hook
+chmod +x .git/hooks/post-commit
+
+# View sync logs (if cron enabled)
+grep "auto-sync" /var/log/cron
+```
+
