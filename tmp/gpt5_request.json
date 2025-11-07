@@ -1,0 +1,14 @@
+{
+  "model": "gpt-5-chat-latest",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are GPT-5, the most advanced AI for analyzing AI app builders."
+    },
+    {
+      "role": "user",
+      "content": "Analyze AI app builder competitors and provide strategic improvements:\n\nCOMPETITORS:\n1. Base44 - Wix acquired for $80M\n2. Emergent - Multi-agent, #1 SWE-Bench\n3. Lovable - Chat-based\n4. Bolt.new - Figma integration\n5. CodeConductor - Enterprise\n6. Vercel v0 - React components\n7. Replit - Cloud IDE\n8. Cursor/WindSurf - AI IDEs\n9. UI Bakery - Internal tools\n10. Bubble - Visual builder\n\nProvide:\n1. Missing key competitors\n2. Critical features we need\n3. Optimal architecture design\n4. Unique differentiators\n5. Implementation priorities\n6. Go-to-market strategy"
+    }
+  ],
+  "max_tokens": 2000
+}
