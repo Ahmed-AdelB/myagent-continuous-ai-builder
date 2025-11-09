@@ -1,0 +1,162 @@
+{
+  "total_tests": 15,
+  "passed": 0,
+  "failed": 1,
+  "errors": 13,
+  "warnings": 1,
+  "tests": [
+    {
+      "name": "test_import_core_modules",
+      "category": "Initialization",
+      "status": "FAILED",
+      "message": "Failed to import 12 modules",
+      "duration": 0.042288,
+      "error_trace": null,
+      "warnings": [
+        "core.orchestrator.continuous_director: No module named 'loguru'",
+        "core.orchestrator.checkpoint_manager: No module named 'loguru'",
+        "core.orchestrator.progress_analyzer: No module named 'loguru'",
+        "core.orchestrator.milestone_tracker: No module named 'loguru'",
+        "core.agents.base_agent: No module named 'loguru'",
+        "core.agents.coder_agent: No module named 'loguru'",
+        "core.agents.tester_agent: No module named 'loguru'",
+        "core.agents.debugger_agent: No module named 'loguru'",
+        "core.memory.vector_memory: No module named 'loguru'",
+        "core.memory.project_ledger: No module named 'loguru'",
+        "core.memory.error_knowledge_graph: No module named 'loguru'",
+        "config.settings: No module named 'pydantic_settings'"
+      ]
+    },
+    {
+      "name": "test_settings_configuration",
+      "category": "Initialization",
+      "status": "ERROR",
+      "message": "No module named 'pydantic_settings'",
+      "duration": 0.002598,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 142, in test_settings_configuration\n    from config.settings import settings\n  File \"/home/user/myagent-continuous-ai-builder/config/__init__.py\", line 5, in <module>\n    from .settings import settings\n  File \"/home/user/myagent-continuous-ai-builder/config/settings.py\", line 9, in <module>\n    from pydantic_settings import BaseSettings\nModuleNotFoundError: No module named 'pydantic_settings'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_directory_structure",
+      "category": "Initialization",
+      "status": "WARNING",
+      "message": "Missing 4 directories (will be created on demand)",
+      "duration": 0.000626,
+      "error_trace": null,
+      "warnings": [
+        "persistence/database",
+        "persistence/vector_memory",
+        "persistence/checkpoints",
+        "persistence/agents"
+      ]
+    },
+    {
+      "name": "test_vector_memory_initialization",
+      "category": "Memory Systems",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002863,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 208, in test_vector_memory_initialization\n    from core.memory.vector_memory import VectorMemory\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_project_ledger",
+      "category": "Memory Systems",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002745,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 246, in test_project_ledger\n    from core.memory.project_ledger import ProjectLedger\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_error_knowledge_graph",
+      "category": "Memory Systems",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.003125,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 290, in test_error_knowledge_graph\n    from core.memory.error_knowledge_graph import ErrorKnowledgeGraph\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_base_agent_initialization",
+      "category": "Agents",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002467,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 334, in test_base_agent_initialization\n    from core.agents.base_agent import PersistentAgent, AgentTask\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_coder_agent_initialization",
+      "category": "Agents",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002304,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 386, in test_coder_agent_initialization\n    from core.agents.coder_agent import CoderAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_tester_agent_initialization",
+      "category": "Agents",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.003066,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 423, in test_tester_agent_initialization\n    from core.agents.tester_agent import TesterAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_debugger_agent_initialization",
+      "category": "Agents",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002591,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 444, in test_debugger_agent_initialization\n    from core.agents.debugger_agent import DebuggerAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_orchestrator_initialization",
+      "category": "Orchestrator",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002415,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 467, in test_orchestrator_initialization\n    from core.orchestrator.continuous_director import ContinuousDirector, QualityMetrics\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_orchestrator_component_initialization",
+      "category": "Orchestrator",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002565,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 501, in test_orchestrator_component_initialization\n    from core.orchestrator.continuous_director import ContinuousDirector\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_task_creation_and_routing",
+      "category": "Integration",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002537,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 551, in test_task_creation_and_routing\n    from core.orchestrator.continuous_director import ContinuousDirector, DevelopmentTask, TaskPriority\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_checkpoint_and_restore",
+      "category": "Integration",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002561,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 595, in test_checkpoint_and_restore\n    from core.orchestrator.continuous_director import ContinuousDirector\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    },
+    {
+      "name": "test_error_recovery_mechanism",
+      "category": "Error Handling",
+      "status": "ERROR",
+      "message": "No module named 'loguru'",
+      "duration": 0.002524,
+      "error_trace": "Traceback (most recent call last):\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 66, in wrapper\n    await func(result)\n  File \"/home/user/myagent-continuous-ai-builder/test_deep_functional.py\", line 642, in test_error_recovery_mechanism\n    from core.agents.debugger_agent import DebuggerAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/__init__.py\", line 10, in <module>\n    from . import agents\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/__init__.py\", line 5, in <module>\n    from .base_agent import PersistentAgent\n  File \"/home/user/myagent-continuous-ai-builder/core/agents/base_agent.py\", line 13, in <module>\n    from loguru import logger\nModuleNotFoundError: No module named 'loguru'\n",
+      "warnings": []
+    }
+  ]
+}

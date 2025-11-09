@@ -1,0 +1,122 @@
+{
+  "summary": {
+    "total": 28,
+    "passed": 28,
+    "failed": 0,
+    "issues": 27
+  },
+  "issue_types": {
+    "Bare except clauses": 7,
+    "Possible secrets": 20
+  },
+  "details": [
+    {
+      "file": "core/memory/vector_memory.py",
+      "issue": "Bare except clause at line 78"
+    },
+    {
+      "file": "core/agents/debugger_agent.py",
+      "issue": "Bare except clause at line 577"
+    },
+    {
+      "file": "core/agents/ui_refiner_agent.py",
+      "issue": "Possible hardcoded secret at line 763"
+    },
+    {
+      "file": "core/agents/ui_refiner_agent.py",
+      "issue": "Possible hardcoded secret at line 358"
+    },
+    {
+      "file": "core/agents/tester_agent.py",
+      "issue": "Bare except clause at line 363"
+    },
+    {
+      "file": "core/agents/coder_agent.py",
+      "issue": "Bare except clause at line 548"
+    },
+    {
+      "file": "api/main.py",
+      "issue": "Bare except clause at line 250"
+    },
+    {
+      "file": "api/main.py",
+      "issue": "Bare except clause at line 259"
+    },
+    {
+      "file": "api/main.py",
+      "issue": "Bare except clause at line 86"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 35"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 56"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 79"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 84"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 89"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 104"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 115"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 323"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 371"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 381"
+    },
+    {
+      "file": "api/auth.py",
+      "issue": "Possible hardcoded secret at line 326"
+    },
+    {
+      "file": "config/settings.py",
+      "issue": "Possible hardcoded secret at line 32"
+    },
+    {
+      "file": "config/settings.py",
+      "issue": "Possible hardcoded secret at line 51"
+    },
+    {
+      "file": "config/settings.py",
+      "issue": "Possible hardcoded secret at line 52"
+    },
+    {
+      "file": "config/settings.py",
+      "issue": "Possible hardcoded secret at line 62"
+    },
+    {
+      "file": "config/settings.py",
+      "issue": "Possible hardcoded secret at line 101"
+    },
+    {
+      "file": "config/settings.py",
+      "issue": "Possible hardcoded secret at line 130"
+    },
+    {
+      "file": "config/settings.py",
+      "issue": "Possible hardcoded secret at line 133"
+    }
+  ]
+}

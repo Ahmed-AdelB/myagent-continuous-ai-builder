@@ -1,0 +1,151 @@
+{
+  "summary": {
+    "total_checks": 24,
+    "passed": 6,
+    "warnings": 1,
+    "issues": []
+  },
+  "files": [
+    {
+      "file": "core/__init__.py",
+      "functions": 0,
+      "classes": 0,
+      "complex_functions": [],
+      "issues": []
+    },
+    {
+      "file": "core/__main__.py",
+      "functions": 1,
+      "classes": 0,
+      "complex_functions": [],
+      "issues": [
+        {
+          "issue": "Long function 'parse_arguments' (61 lines)",
+          "severity": "medium"
+        }
+      ]
+    },
+    {
+      "file": "core/memory/project_ledger.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/memory/__init__.py",
+      "functions": 0,
+      "classes": 0,
+      "complex_functions": [],
+      "issues": []
+    },
+    {
+      "file": "core/memory/vector_memory.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/memory/error_knowledge_graph.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/learning/__init__.py",
+      "functions": 0,
+      "classes": 0,
+      "complex_functions": [],
+      "issues": []
+    },
+    {
+      "file": "core/learning/pattern_recognition.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/orchestrator/__init__.py",
+      "functions": 0,
+      "classes": 0,
+      "complex_functions": [],
+      "issues": []
+    },
+    {
+      "file": "core/orchestrator/progress_analyzer.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/orchestrator/checkpoint_manager.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/orchestrator/continuous_director.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/orchestrator/milestone_tracker.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/agents/debugger_agent.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/agents/__init__.py",
+      "functions": 0,
+      "classes": 0,
+      "complex_functions": [],
+      "issues": []
+    },
+    {
+      "file": "core/agents/analyzer_agent.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/agents/ui_refiner_agent.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/agents/tester_agent.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/agents/coder_agent.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/agents/architect_agent.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "core/agents/base_agent.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "api/__init__.py",
+      "functions": 0,
+      "classes": 0,
+      "complex_functions": [],
+      "issues": []
+    },
+    {
+      "file": "api/main.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    },
+    {
+      "file": "api/auth.py",
+      "error": "maximum recursion depth exceeded",
+      "issues": []
+    }
+  ],
+  "high_severity_count": 0,
+  "medium_severity_count": 1
+}
