@@ -75,7 +75,9 @@ class VectorMemory:
         """Get or create a ChromaDB collection"""
         try:
             return self.chroma_client.get_collection(name)
-        except:
+        except (ValueError, Exception) as e:
+            # Collection doesn't exist, create it
+            logger.debug(f"Collection '{name}' not found, creating: {e}")
             return self.chroma_client.create_collection(
                 name=name,
                 metadata={"project": self.project_name}

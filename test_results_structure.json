@@ -3,21 +3,12 @@
     "total": 28,
     "passed": 28,
     "failed": 0,
-    "issues": 27
+    "issues": 20
   },
   "issue_types": {
-    "Bare except clauses": 7,
     "Possible secrets": 20
   },
   "details": [
-    {
-      "file": "core/memory/vector_memory.py",
-      "issue": "Bare except clause at line 78"
-    },
-    {
-      "file": "core/agents/debugger_agent.py",
-      "issue": "Bare except clause at line 577"
-    },
     {
       "file": "core/agents/ui_refiner_agent.py",
       "issue": "Possible hardcoded secret at line 763"
@@ -25,26 +16,6 @@
     {
       "file": "core/agents/ui_refiner_agent.py",
       "issue": "Possible hardcoded secret at line 358"
-    },
-    {
-      "file": "core/agents/tester_agent.py",
-      "issue": "Bare except clause at line 363"
-    },
-    {
-      "file": "core/agents/coder_agent.py",
-      "issue": "Bare except clause at line 548"
-    },
-    {
-      "file": "api/main.py",
-      "issue": "Bare except clause at line 250"
-    },
-    {
-      "file": "api/main.py",
-      "issue": "Bare except clause at line 259"
-    },
-    {
-      "file": "api/main.py",
-      "issue": "Bare except clause at line 86"
     },
     {
       "file": "api/auth.py",

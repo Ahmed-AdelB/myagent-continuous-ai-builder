@@ -545,7 +545,8 @@ class CoderAgent(PersistentAgent):
         try:
             ast.parse(code)
             return True
-        except:
+        except (SyntaxError, ValueError) as e:
+            logger.debug(f"Code validation failed: {e}")
             return False
     
     def _generate_file_name(self, feature_name: str, language: str) -> str:

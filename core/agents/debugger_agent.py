@@ -574,7 +574,8 @@ class DebuggerAgent(PersistentAgent):
         try:
             ast.parse(code)
             return True
-        except:
+        except (SyntaxError, ValueError) as e:
+            logger.debug(f"Code validation failed: {e}")
             return False
     
     def _hash_error(self, error_message: str, location: Dict) -> str:

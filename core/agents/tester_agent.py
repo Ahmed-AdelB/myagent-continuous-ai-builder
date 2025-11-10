@@ -330,10 +330,10 @@ class Test{component_name}Performance:
         """Analyze code to understand testing requirements"""
         try:
             tree = ast.parse(code)
-            
+
             functions = []
             classes = []
-            
+
             for node in ast.walk(tree):
                 if isinstance(node, ast.FunctionDef):
                     functions.append({
@@ -351,7 +351,7 @@ class Test{component_name}Performance:
                         'name': node.name,
                         'methods': methods
                     })
-            
+
             return {
                 'functions': functions,
                 'classes': classes,
@@ -360,7 +360,8 @@ class Test{component_name}Performance:
                     for node in ast.walk(tree)
                 )
             }
-        except:
+        except (SyntaxError, ValueError, AttributeError) as e:
+            logger.warning(f"Failed to analyze code for testing: {e}")
             return {'functions': [], 'classes': [], 'has_async': False}
     
     def _generate_test_method(self, func: Dict) -> str:

@@ -83,9 +83,10 @@ class WebSocketManager:
             for connection in self.active_connections[project_id]:
                 try:
                     await connection.send_json(message)
-                except:
+                except (RuntimeError, ConnectionError, Exception) as e:
+                    logger.warning(f"WebSocket send failed, marking for disconnect: {e}")
                     disconnected.append(connection)
-            
+
             # Clean up disconnected clients
             for conn in disconnected:
                 self.disconnect(conn, project_id)
@@ -247,7 +248,8 @@ async def get_project(project_id: str):
     if hasattr(orchestrator, 'milestone_tracker'):
         try:
             milestones = orchestrator.milestone_tracker.get_progress_summary()
-        except:
+        except (AttributeError, KeyError, Exception) as e:
+            logger.warning(f"Failed to get milestones: {e}")
             milestones = {}
 
     # Get estimated completion safely
@@ -256,7 +258,8 @@ async def get_project(project_id: str):
         try:
             status = orchestrator.progress_analyzer.get_current_status()
             estimated_completion = status.get('estimated_completion')
-        except:
+        except (AttributeError, KeyError, Exception) as e:
+            logger.warning(f"Failed to get estimated completion: {e}")
             pass
 
     return ProjectStatus(
