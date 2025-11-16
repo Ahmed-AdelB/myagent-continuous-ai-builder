@@ -173,7 +173,7 @@ class DebuggerAgent(PersistentAgent):
         self.debug_metrics['errors_analyzed'] += 1
         
         # Learn from error if orchestrator available
-        if self.orchestrator and hasattr(self.orchestrator, 'error_graph'):
+        if self.orchestrator and hasattr(self.orchestrator, 'error_knowledge'):
             await self._report_to_knowledge_graph(error_type, error_message, analysis)
         
         return {
@@ -432,8 +432,8 @@ class DebuggerAgent(PersistentAgent):
         similar = []
         
         # Check orchestrator's error knowledge graph
-        if self.orchestrator and hasattr(self.orchestrator, 'error_graph'):
-            similar_nodes = self.orchestrator.error_graph.find_similar_errors(
+        if self.orchestrator and hasattr(self.orchestrator, 'error_knowledge'):
+            similar_nodes = self.orchestrator.error_knowledge.find_similar_errors(
                 error_message,
                 threshold=0.8
             )
@@ -585,8 +585,8 @@ class DebuggerAgent(PersistentAgent):
     
     async def _report_to_knowledge_graph(self, error_type: str, error_message: str, analysis: Dict):
         """Report error to knowledge graph for learning"""
-        if self.orchestrator and hasattr(self.orchestrator, 'error_graph'):
-            self.orchestrator.error_graph.add_error(
+        if self.orchestrator and hasattr(self.orchestrator, 'error_knowledge'):
+            self.orchestrator.error_knowledge.add_error(
                 error_type=error_type,
                 error_message=error_message,
                 context=analysis

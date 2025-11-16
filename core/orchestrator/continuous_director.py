@@ -60,7 +60,6 @@ class DevelopmentTask:
     error_history: List[str] = field(default_factory=list)
     result: Optional[Any] = None
     dependencies: List[str] = field(default_factory=list)
-    data: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict:
         """Convert task to dictionary for serialization"""
@@ -250,10 +249,9 @@ class ContinuousDirector:
             "ui_refiner": UIRefinerAgent(orchestrator=self)
         }
 
-        # Initialize all agents (if they have initialize method)
+        # Initialize all agents
         for agent_name, agent in self.agents.items():
-            if hasattr(agent, 'initialize'):
-                await agent.initialize()
+            await agent.initialize()
             logger.info(f"Initialized agent: {agent_name}")
 
     async def _execute_iteration(self):
@@ -332,7 +330,7 @@ class ContinuousDirector:
                 logger.info(f"Assigning task {task.id} to agent {agent}")
 
                 # Execute task
-                result = await self.agents[agent].process_task(task)
+                result = await self.agents[agent].execute_task(task)
 
                 # Update task status
                 task.completed_at = datetime.now()
@@ -417,363 +415,24 @@ class ContinuousDirector:
         # Default to coder agent
         return "coder"
 
-    # Implementation of core methods
-    async def _load_project_state(self):
-        """Load existing project state from persistent storage"""
-        try:
-            # Try to load previous metrics
-            checkpoint_dir = Path(f"persistence/snapshots")
-            if checkpoint_dir.exists():
-                checkpoints = sorted(checkpoint_dir.glob("checkpoint_*.json"))
-                if checkpoints:
-                    latest_checkpoint = checkpoints[-1]
-                    with open(latest_checkpoint, "r") as f:
-                        data = json.load(f)
+    # Placeholder methods - to be implemented
+    async def _load_project_state(self): pass
+    async def _run_tests(self) -> Dict: return {}
+    async def _debug_and_fix(self, failures): pass
+    async def _optimize_performance(self): pass
+    async def _validate_quality(self): pass
+    async def _analyze_current_state(self) -> Dict: return {}
+    async def _recover_from_error(self, error): pass
+    async def _cleanup(self): pass
+    async def _analyze_successes(self) -> List: return []
+    async def _analyze_failures(self) -> List: return []
+    async def _learn_from_failure(self, task): pass
 
-                    # Restore state
-                    self.iteration_count = data.get("iteration", 0)
-                    self.state = ProjectState(data.get("state", "planning"))
-
-                    # Restore metrics if available
-                    if "metrics" in data:
-                        self.metrics = QualityMetrics(**data["metrics"])
-
-                    logger.info(f"Loaded project state from {latest_checkpoint}")
-        except Exception as e:
-            logger.warning(f"Could not load previous state: {e}. Starting fresh.")
-
-    async def _run_tests(self) -> Dict:
-        """Run tests using the tester agent"""
-        if "tester" not in self.agents:
-            return {"status": "no_tester", "failures": []}
-
-        try:
-            # Create test execution task
-            task = DevelopmentTask(
-                id=f"test-run-{self.iteration_count}",
-                type="test_execution",
-                description="Run all tests and measure coverage",
-                priority=TaskPriority.HIGH,
-                data={"measure_coverage": True}
-            )
-
-            # Execute tests
-            result = await self.agents["tester"].process_task(task)
-
-            # Update metrics
-            if result and "coverage" in result:
-                self.metrics.test_coverage = result["coverage"]
-
-            return {
-                "status": "completed",
-                "failures": result.get("failures", []) if result else [],
-                "coverage": result.get("coverage", 0.0) if result else 0.0
-            }
-        except Exception as e:
-            logger.error(f"Test execution failed: {e}")
-            return {"status": "error", "failures": [], "error": str(e)}
-
-    async def _debug_and_fix(self, failures):
-        """Debug and fix test failures using debugger agent"""
-        if "debugger" not in self.agents or not failures:
-            return
-
-        try:
-            for i, failure in enumerate(failures[:5]):  # Process up to 5 failures at once
-                task = DevelopmentTask(
-                    id=f"debug-fix-{self.iteration_count}-{i}",
-                    type="debug_failure",
-                    description=f"Fix test failure: {failure.get('test_name', 'unknown')}",
-                    priority=TaskPriority.CRITICAL,
-                    data={"failure_info": failure}
-                )
-
-                result = await self.agents["debugger"].process_task(task)
-
-                if result and result.get("fixed"):
-                    logger.success(f"Fixed failure: {failure.get('test_name')}")
-                    # Decrease bug count
-                    if failure.get("severity") == "critical":
-                        self.metrics.bug_count_critical = max(0, self.metrics.bug_count_critical - 1)
-                    else:
-                        self.metrics.bug_count_minor = max(0, self.metrics.bug_count_minor - 1)
-        except Exception as e:
-            logger.error(f"Debugging failed: {e}")
-
-    async def _optimize_performance(self):
-        """Optimize performance using analyzer agent"""
-        if "analyzer" not in self.agents:
-            return
-
-        try:
-            task = DevelopmentTask(
-                id=f"performance-analysis-{self.iteration_count}",
-                type="performance_analysis",
-                description="Analyze and optimize performance",
-                priority=TaskPriority.NORMAL,
-                data={"current_score": self.metrics.performance_score}
-            )
-
-            result = await self.agents["analyzer"].process_task(task)
-
-            if result and "performance_score" in result:
-                self.metrics.performance_score = result["performance_score"]
-                logger.info(f"Performance score: {self.metrics.performance_score}%")
-        except Exception as e:
-            logger.error(f"Performance optimization failed: {e}")
-
-    async def _validate_quality(self):
-        """Validate overall quality metrics"""
-        if "analyzer" not in self.agents:
-            return
-
-        try:
-            task = DevelopmentTask(
-                id=f"quality-validation-{self.iteration_count}",
-                type="quality_validation",
-                description="Validate all quality metrics",
-                priority=TaskPriority.NORMAL,
-                data={"current_metrics": self.metrics.dict()}
-            )
-
-            result = await self.agents["analyzer"].process_task(task)
-
-            if result:
-                # Update all metrics from validation
-                if "code_quality_score" in result:
-                    self.metrics.code_quality_score = result["code_quality_score"]
-                if "documentation_coverage" in result:
-                    self.metrics.documentation_coverage = result["documentation_coverage"]
-                if "security_score" in result:
-                    self.metrics.security_score = result["security_score"]
-
-                logger.info("Quality validation complete")
-        except Exception as e:
-            logger.error(f"Quality validation failed: {e}")
-
-    async def _analyze_current_state(self) -> Dict:
-        """Analyze current project state and identify needs"""
-        weak_metrics = self.identify_weak_metrics()
-
-        analysis = {
-            "iteration": self.iteration_count,
-            "state": self.state.value,
-            "metrics": self.metrics.dict(),
-            "weak_metrics": weak_metrics,
-            "completed_tasks": len(self.completed_tasks),
-            "failed_tasks": len(self.failed_tasks),
-            "needs_tests": self.metrics.test_coverage < 95.0,
-            "needs_optimization": self.metrics.performance_score < 90.0,
-            "has_critical_bugs": self.metrics.bug_count_critical > 0,
-            "needs_documentation": self.metrics.documentation_coverage < 90.0,
-            "needs_security": self.metrics.security_score < 95.0
-        }
-
-        return analysis
-
-    async def _recover_from_error(self, error):
-        """Attempt to recover from critical errors"""
-        logger.error(f"Attempting recovery from error: {error}")
-
-        try:
-            # Record error in knowledge graph
-            if hasattr(self, 'error_graph'):
-                self.error_graph.add_error(
-                    error_type=type(error).__name__,
-                    error_message=str(error),
-                    context={"iteration": self.iteration_count, "state": self.state.value},
-                    stack_trace=""
-                )
-
-            # Try to load last checkpoint
-            await self._load_project_state()
-
-            # Reset to planning state
-            self.state = ProjectState.PLANNING
-
-            # Clear task queue and retry
-            self.task_queue.clear()
-
-            logger.info("Recovery attempt completed")
-        except Exception as e:
-            logger.error(f"Recovery failed: {e}")
-
-    async def _analyze_successes(self) -> List:
-        """Analyze successful patterns from completed tasks"""
-        patterns = []
-
-        # Look at recent successful tasks
-        recent_successes = [t for t in self.completed_tasks[-20:] if t.status == "completed"]
-
-        for task in recent_successes:
-            pattern = {
-                "task_type": task.type,
-                "agent": task.assigned_agent,
-                "duration": (task.completed_at - task.started_at).total_seconds() if task.completed_at and task.started_at else 0,
-                "attempts": task.attempts,
-                "iteration": self.iteration_count
-            }
-            patterns.append(pattern)
-
-        return patterns
-
-    async def _analyze_failures(self) -> List:
-        """Analyze failure patterns from failed tasks"""
-        patterns = []
-
-        for task in self.failed_tasks[-10:]:  # Last 10 failures
-            pattern = {
-                "task_type": task.type,
-                "error_types": task.error_history,
-                "attempts": task.attempts,
-                "iteration": self.iteration_count
-            }
-            patterns.append(pattern)
-
-        return patterns
-
-    async def _learn_from_failure(self, task):
-        """Learn from a failed task"""
-        if not hasattr(self, 'error_graph'):
-            return
-
-        # Record each error in the knowledge graph
-        for error in task.error_history:
-            self.error_graph.add_error(
-                error_type=task.type,
-                error_message=error,
-                context={
-                    "task_id": task.id,
-                    "agent": task.assigned_agent,
-                    "iteration": self.iteration_count
-                },
-                stack_trace=""
-            )
-
-    def _generate_bug_fix_tasks(self, priority) -> List:
-        """Generate tasks to fix bugs"""
-        tasks = []
-
-        # Generate tasks for critical bugs
-        for i in range(self.metrics.bug_count_critical):
-            task = DevelopmentTask(
-                id=f"bugfix-critical-{self.iteration_count}-{i}",
-                type="debug_critical_bug",
-                description=f"Fix critical bug #{i+1}",
-                priority=priority,
-                data={"severity": "critical", "bug_index": i}
-            )
-            tasks.append(task)
-
-        # Generate tasks for minor bugs (if not many critical ones)
-        if self.metrics.bug_count_critical == 0:
-            for i in range(min(self.metrics.bug_count_minor, 3)):
-                task = DevelopmentTask(
-                    id=f"bugfix-minor-{self.iteration_count}-{i}",
-                    type="debug_minor_bug",
-                    description=f"Fix minor bug #{i+1}",
-                    priority=TaskPriority.NORMAL,
-                    data={"severity": "minor", "bug_index": i}
-                )
-                tasks.append(task)
-
-        return tasks
-
-    def _generate_test_tasks(self, priority) -> List:
-        """Generate tasks to improve test coverage"""
-        tasks = []
-
-        coverage_gap = 95.0 - self.metrics.test_coverage
-        if coverage_gap > 0:
-            # Generate test tasks based on coverage gap
-            num_tasks = max(1, int(coverage_gap / 10))  # One task per 10% gap
-
-            for i in range(num_tasks):
-                task = DevelopmentTask(
-                    id=f"test-generation-{self.iteration_count}-{i}",
-                    type="test_generation",
-                    description=f"Generate tests to improve coverage (batch {i+1})",
-                    priority=priority,
-                    data={
-                        "target_coverage": 95.0,
-                        "current_coverage": self.metrics.test_coverage,
-                        "batch": i
-                    }
-                )
-                tasks.append(task)
-
-        return tasks
-
-    def _generate_optimization_tasks(self, priority) -> List:
-        """Generate performance optimization tasks"""
-        tasks = []
-
-        if self.metrics.performance_score < 90.0:
-            task = DevelopmentTask(
-                id=f"optimize-performance-{self.iteration_count}",
-                type="performance_optimization",
-                description="Optimize application performance",
-                priority=priority,
-                data={
-                    "target_score": 90.0,
-                    "current_score": self.metrics.performance_score
-                }
-            )
-            tasks.append(task)
-
-        return tasks
-
-    def _generate_feature_tasks(self, priority) -> List:
-        """Generate feature development tasks from project spec"""
-        tasks = []
-
-        # Check if there are features in the project spec
-        if "features" in self.project_spec:
-            for i, feature in enumerate(self.project_spec["features"][:3]):  # Limit to 3 features per iteration
-                task = DevelopmentTask(
-                    id=f"feature-{self.iteration_count}-{i}",
-                    type="code_feature",
-                    description=f"Implement feature: {feature.get('name', 'unknown')}",
-                    priority=priority,
-                    data={"feature": feature}
-                )
-                tasks.append(task)
-
-        return tasks
-
-    def _prioritize_tasks(self, tasks) -> List:
-        """Prioritize and sort tasks by priority and dependencies"""
-        if not tasks:
-            return tasks
-
-        # Sort by priority (lower number = higher priority)
-        sorted_tasks = sorted(tasks, key=lambda t: (
-            t.priority.value if isinstance(t.priority, TaskPriority) else t.priority,
-            t.created_at
-        ))
-
-        # Handle dependencies (simple topological sort)
-        final_order = []
-        completed_ids = set()
-
-        max_iterations = len(sorted_tasks) * 2
-        iteration = 0
-
-        while sorted_tasks and iteration < max_iterations:
-            iteration += 1
-            for task in sorted_tasks[:]:
-                # Check if all dependencies are completed
-                deps_met = all(dep_id in completed_ids for dep_id in task.dependencies)
-
-                if deps_met:
-                    final_order.append(task)
-                    completed_ids.add(task.id)
-                    sorted_tasks.remove(task)
-
-        # Add remaining tasks (in case of circular dependencies)
-        final_order.extend(sorted_tasks)
-
-        return final_order
+    def _generate_bug_fix_tasks(self, priority) -> List: return []
+    def _generate_test_tasks(self, priority) -> List: return []
+    def _generate_optimization_tasks(self, priority) -> List: return []
+    def _generate_feature_tasks(self, priority) -> List: return []
+    def _prioritize_tasks(self, tasks) -> List: return tasks
 
     # Control methods
     async def pause(self):
@@ -847,7 +506,7 @@ class ContinuousDirector:
                 id=f"test-intensification-{self.iteration_count}",
                 type="test_generation",
                 description="Generate additional tests to reach 95% coverage",
-                priority=TaskPriority.HIGH,
+                priority=9,
                 data={"target_coverage": 95, "current_coverage": self.metrics.test_coverage}
             )
             self.task_queue.insert(0, task)
@@ -860,7 +519,7 @@ class ContinuousDirector:
                 id=f"performance-opt-{self.iteration_count}",
                 type="performance_optimization",
                 description="Analyze and optimize performance bottlenecks",
-                priority=TaskPriority.HIGH,
+                priority=8,
                 data={"target_score": 90, "current_score": self.metrics.performance_score}
             )
             self.task_queue.insert(0, task)
@@ -876,7 +535,7 @@ class ContinuousDirector:
                 id=f"emergency-debug-{self.iteration_count}",
                 type="emergency_debug",
                 description="Fix all critical bugs immediately",
-                priority=TaskPriority.CRITICAL,
+                priority=10,
                 data={"bug_count": self.metrics.bug_count_critical}
             )
             # Clear other tasks and focus on debugging
@@ -890,7 +549,7 @@ class ContinuousDirector:
                 id=f"doc-generation-{self.iteration_count}",
                 type="documentation",
                 description="Generate comprehensive documentation",
-                priority=TaskPriority.NORMAL,
+                priority=6,
                 data={"target_coverage": 90, "current_coverage": self.metrics.documentation_coverage}
             )
             self.task_queue.append(task)
@@ -903,7 +562,7 @@ class ContinuousDirector:
                 id=f"security-audit-{self.iteration_count}",
                 type="security_audit",
                 description="Perform security audit and implement fixes",
-                priority=TaskPriority.HIGH,
+                priority=9,
                 data={"target_score": 95, "current_score": self.metrics.security_score}
             )
             self.task_queue.insert(0, task)
@@ -931,25 +590,3 @@ class ContinuousDirector:
             weak_metrics["bug_count_critical"] = metrics["bug_count_critical"]
 
         return weak_metrics
-
-    @property
-    def ledger(self):
-        """Get or create project ledger"""
-        if not hasattr(self, '_ledger'):
-            from core.memory.project_ledger import ProjectLedger
-            self._ledger = ProjectLedger(self.project_name)
-        return self._ledger
-    
-    def update_quality_metrics(self, new_metrics: Dict):
-        """Update quality metrics"""
-        for key, value in new_metrics.items():
-            if hasattr(self.metrics, key):
-                setattr(self.metrics, key, value)
-        
-        # Log the update
-        self.ledger.record_decision(
-            self.iteration_count,
-            "orchestrator", 
-            "quality_metrics_update",
-            f"Updated quality metrics: {new_metrics}"
-        )

@@ -1,0 +1,314 @@
+{
+  "performance_baselines": {
+    "agent_response_time": {
+      "coder_agent": 3.0,
+      "tester_agent": 2.5,
+      "debugger_agent": 4.0,
+      "architect_agent": 5.0,
+      "analyzer_agent": 3.5,
+      "ui_refiner_agent": 2.0
+    },
+    "api_endpoints": {
+      "health_check": 0.1,
+      "project_creation": 2.0,
+      "agent_status": 0.5,
+      "websocket_connection": 0.2
+    },
+    "memory_operations": {
+      "vector_storage": 1.0,
+      "ledger_write": 0.5,
+      "knowledge_graph_query": 1.5
+    }
+  },
+  "test_scenarios": {
+    "user_workflows": [
+      {
+        "name": "Create Simple Project",
+        "steps": [
+          "Navigate to dashboard",
+          "Click 'New Project'",
+          "Fill project form",
+          "Start development",
+          "Monitor progress",
+          "Review completion"
+        ],
+        "expected_duration": 300,
+        "success_criteria": ["Project created", "Agents active", "Progress visible"]
+      },
+      {
+        "name": "Debug Error Workflow",
+        "steps": [
+          "Detect error in code",
+          "Analyze error details",
+          "Generate fix proposal",
+          "Apply fix",
+          "Verify resolution",
+          "Update tests"
+        ],
+        "expected_duration": 180,
+        "success_criteria": ["Error identified", "Fix applied", "Tests updated"]
+      }
+    ],
+    "integration_scenarios": [
+      {
+        "name": "Multi-Agent Coordination",
+        "description": "Test coordination between multiple agents",
+        "agents_involved": ["coder", "tester", "debugger"],
+        "scenario_steps": [
+          "Coder generates function",
+          "Tester creates tests",
+          "Tests reveal bug",
+          "Debugger fixes issue",
+          "Tester verifies fix"
+        ],
+        "expected_interactions": 5,
+        "success_criteria": ["All agents participate", "Issue resolved", "Tests pass"]
+      }
+    ]
+  },
+  "gpt5_test_data": {
+    "memory_pyramid": {
+      "test_memories": [
+        {
+          "content": "User requested fibonacci function",
+          "memory_type": "user_request",
+          "importance": 0.8,
+          "tier": "working"
+        },
+        {
+          "content": "Implemented recursive fibonacci with memoization",
+          "memory_type": "implementation",
+          "importance": 0.9,
+          "tier": "short_term"
+        },
+        {
+          "content": "Performance optimized fibonacci using bottom-up approach",
+          "memory_type": "optimization",
+          "importance": 0.95,
+          "tier": "long_term"
+        }
+      ],
+      "consolidation_triggers": [
+        "memory_count_threshold",
+        "time_elapsed",
+        "importance_score"
+      ]
+    },
+    "security_scanner": {
+      "vulnerability_samples": [
+        {
+          "type": "sql_injection",
+          "code": "query = f\"SELECT * FROM users WHERE id = {user_id}\"",
+          "severity": "HIGH",
+          "expected_detection": true
+        },
+        {
+          "type": "hardcoded_secret",
+          "code": "API_KEY = \"sk-1234567890abcdef\"",
+          "severity": "CRITICAL",
+          "expected_detection": true
+        },
+        {
+          "type": "xss_vulnerability",
+          "code": "return f\"<div>{user_input}</div>\"",
+          "severity": "MEDIUM",
+          "expected_detection": true
+        }
+      ],
+      "compliance_frameworks": ["OWASP", "GDPR", "PCI_DSS", "NIST", "ISO_27001"]
+    },
+    "self_healing": {
+      "failure_scenarios": [
+        {
+          "name": "API Server Down",
+          "trigger": "server_unavailable",
+          "expected_action": "restart_service",
+          "recovery_time": 30
+        },
+        {
+          "name": "Database Connection Lost",
+          "trigger": "db_connection_error",
+          "expected_action": "reconnect_database",
+          "recovery_time": 10
+        },
+        {
+          "name": "Memory Leak Detected",
+          "trigger": "memory_threshold_exceeded",
+          "expected_action": "restart_component",
+          "recovery_time": 60
+        }
+      ],
+      "health_metrics": [
+        "cpu_usage",
+        "memory_usage",
+        "response_time",
+        "error_rate",
+        "database_connections"
+      ]
+    },
+    "knowledge_graph": {
+      "test_entities": [
+        {
+          "name": "fibonacci_function",
+          "type": "code_component",
+          "properties": {"language": "python", "complexity": "medium"}
+        },
+        {
+          "name": "performance_optimization",
+          "type": "improvement",
+          "properties": {"type": "algorithmic", "impact": "high"}
+        }
+      ],
+      "test_relations": [
+        {
+          "source": "fibonacci_function",
+          "target": "performance_optimization",
+          "relation": "improved_by",
+          "strength": 0.9
+        }
+      ],
+      "semantic_queries": [
+        "Find all optimization techniques for recursive functions",
+        "What are the dependencies of the user authentication module?",
+        "Show performance improvements implemented in the last iteration"
+      ]
+    },
+    "deployment": {
+      "pipeline_stages": [
+        "code_checkout",
+        "dependency_installation",
+        "unit_tests",
+        "integration_tests",
+        "security_scan",
+        "build_artifacts",
+        "deploy_staging",
+        "smoke_tests",
+        "deploy_production"
+      ],
+      "quality_gates": [
+        {"name": "test_coverage", "threshold": 95.0},
+        {"name": "code_quality", "threshold": 85.0},
+        {"name": "security_score", "threshold": 95.0},
+        {"name": "performance_score", "threshold": 90.0}
+      ],
+      "deployment_strategies": ["rolling_update", "blue_green", "canary"]
+    },
+    "causal_analytics": {
+      "test_variables": ["treatment", "outcome", "confounder", "mediator"],
+      "causal_methods": ["backdoor", "frontdoor", "instrumental_variables", "propensity_score"],
+      "sample_interventions": [
+        {
+          "treatment": "code_refactoring",
+          "outcome": "performance_improvement",
+          "expected_effect": 0.25,
+          "confounders": ["code_complexity", "developer_experience"]
+        }
+      ]
+    }
+  },
+  "ui_test_scenarios": {
+    "accessibility": [
+      {
+        "test": "keyboard_navigation",
+        "description": "All interactive elements accessible via keyboard",
+        "selectors": ["button", "input", "select", "a[href]"],
+        "requirements": ["Tab navigation", "Enter activation", "Escape cancellation"]
+      },
+      {
+        "test": "screen_reader_compatibility",
+        "description": "Screen readers can interpret all content",
+        "requirements": ["alt text", "aria-labels", "semantic HTML", "heading hierarchy"]
+      },
+      {
+        "test": "color_contrast",
+        "description": "Text has sufficient color contrast",
+        "minimum_ratio": 4.5,
+        "elements": ["text", "buttons", "form_labels"]
+      }
+    ],
+    "responsive_design": [
+      {
+        "breakpoint": "mobile",
+        "width": 375,
+        "height": 812,
+        "tests": ["navigation_collapse", "text_readability", "touch_targets"]
+      },
+      {
+        "breakpoint": "tablet",
+        "width": 768,
+        "height": 1024,
+        "tests": ["layout_adaptation", "form_usability", "navigation_behavior"]
+      },
+      {
+        "breakpoint": "desktop",
+        "width": 1920,
+        "height": 1080,
+        "tests": ["full_feature_availability", "optimal_layout", "keyboard_shortcuts"]
+      }
+    ]
+  },
+  "error_scenarios": {
+    "common_errors": [
+      {
+        "type": "TypeError",
+        "description": "Type mismatch in function parameters",
+        "sample_code": "def add(a, b): return a + b; add('1', 2)",
+        "expected_fix": "Type validation or conversion"
+      },
+      {
+        "type": "AttributeError",
+        "description": "Accessing non-existent attribute",
+        "sample_code": "user.non_existent_field",
+        "expected_fix": "Attribute existence check"
+      },
+      {
+        "type": "IndexError",
+        "description": "List index out of range",
+        "sample_code": "items[len(items)]",
+        "expected_fix": "Index bounds checking"
+      }
+    ],
+    "integration_errors": [
+      {
+        "type": "NetworkError",
+        "description": "API endpoint unavailable",
+        "trigger": "external_service_down",
+        "expected_handling": "retry_with_backoff"
+      },
+      {
+        "type": "DatabaseError",
+        "description": "Database connection timeout",
+        "trigger": "db_overload",
+        "expected_handling": "connection_pooling"
+      }
+    ]
+  },
+  "performance_test_data": {
+    "load_patterns": [
+      {
+        "name": "steady_state",
+        "users": 100,
+        "duration": 300,
+        "ramp_up": 30
+      },
+      {
+        "name": "spike_test",
+        "users": 1000,
+        "duration": 60,
+        "ramp_up": 10
+      },
+      {
+        "name": "stress_test",
+        "users": 2000,
+        "duration": 600,
+        "ramp_up": 120
+      }
+    ],
+    "metrics_thresholds": {
+      "response_time_95th": 2.0,
+      "response_time_99th": 5.0,
+      "error_rate": 0.01,
+      "throughput_min": 100
+    }
+  }
+}

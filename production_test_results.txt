@@ -1,0 +1,61 @@
+🔍 Testing imports for all GPT-5 improvements...
+   ❌ Meta-Governance Layer: No module named 'aioredis'
+   ✅ Iteration Quality Framework imported
+   ✅ Agent Communication Bus imported
+   ✅ Unified Memory Orchestrator imported
+   ✅ Human-in-the-Loop Review Gateway imported
+   ❌ Reinforcement Learning Engine: cannot import name 'RLConfiguration' from 'core.learning.reinforcement_learning_engine' (/home/aadel/projects/22_MyAgent/core/learning/reinforcement_learning_engine.py)
+   ✅ Modular Agent Skills imported
+
+📊 Import Summary: 5/7 components imported successfully
+🚀 Starting Comprehensive GPT-5 Enhancement Test Suite
+======================================================================
+
+📋 Testing Meta-Governance Layer...
+❌ Meta-Governance Layer: FAILED - name 'GovernanceConfiguration' is not defined
+
+📋 Testing Iteration Quality Framework...
+❌ Iteration Quality Framework: FAILED - 'IterationQualityFramework' object has no attribute 'calculate_iteration_quality_score'
+
+📋 Testing Agent Communication Bus...
+❌ Agent Communication Bus: FAILED - cannot import name 'Message' from 'core.communication.agent_message_bus' (/home/aadel/projects/22_MyAgent/core/communication/agent_message_bus.py)
+
+📋 Testing Unified Memory Orchestrator...
+❌ Unified Memory Orchestrator: FAILED - MemoryOrchestrator.__init__() missing 1 required positional argument: 'project_name'
+
+📋 Testing Human Review Gateway...
+❌ Human Review Gateway: FAILED - HumanReviewGateway.__init__() missing 2 required positional arguments: 'project_name' and 'message_bus'
+
+📋 Testing Reinforcement Learning Engine...
+❌ Reinforcement Learning Engine: FAILED - name 'RLConfiguration' is not defined
+
+📋 Testing Modular Agent Skills...
+✅ Modular Agent Skills: PASSED
+
+📋 Testing System Integration...
+❌ System Integration: FAILED - Unknown error
+
+======================================================================
+🎯 FINAL TEST REPORT
+======================================================================
+📊 Tests Run: 8
+✅ Passed: 1
+❌ Failed: 7
+📈 Success Rate: 12.5%
+⏱️  Duration: 0.0 seconds
+
+🏥 System Status: NEEDS_ATTENTION
+🚀 Ready for Deployment: NO
+
+🤖 GPT-5 Implementation Status:
+   Priority 1 Meta Governance: COMPLETED
+   Priority 2 Quality Framework: COMPLETED
+   Priority 3 Message Bus: COMPLETED
+   Priority 4 Memory Orchestrator: COMPLETED
+   Priority 5 Review Gateway: COMPLETED
+   Priority 6 Rl Engine: COMPLETED
+   Priority 7 Modular Skills: COMPLETED
+
+📋 Detailed report saved to: gpt5_test_report_20251116_014040.json
+
+⚠️  SYSTEM NEEDS ATTENTION - 7 failed tests

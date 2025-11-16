@@ -83,12 +83,10 @@ class CoderAgent(PersistentAgent):
         )
         
         # Initialize LangChain components
-        from config.settings import settings
         self.llm = ChatOpenAI(
-            model="gpt-5-chat-latest",
+            model="gpt-4",
             temperature=0.3,
-            max_tokens=2000,
-            openai_api_key=settings.OPENAI_API_KEY
+            max_tokens=2000
         )
         
         self.code_parser = CodeOutputParser()
@@ -296,10 +294,7 @@ class CoderAgent(PersistentAgent):
             code_structure=json.dumps(code_structure, indent=2)
         )
         
-        # Use ainvoke with HumanMessage for modern LangChain
-        from langchain_core.messages import HumanMessage
-        response_message = await self.llm.ainvoke([HumanMessage(content=prompt)])
-        response = response_message.content
+        response = await self.llm.apredict(prompt)
         parsed = self.code_parser.parse(response)
         
         # Process generated code
@@ -346,10 +341,7 @@ class CoderAgent(PersistentAgent):
             constraints=json.dumps(constraints, indent=2)
         )
         
-        # Use ainvoke with HumanMessage for modern LangChain
-        from langchain_core.messages import HumanMessage
-        response_message = await self.llm.ainvoke([HumanMessage(content=prompt)])
-        response = response_message.content
+        response = await self.llm.apredict(prompt)
         parsed = self.code_parser.parse(response)
         
         refactored_code = None
@@ -391,10 +383,7 @@ class CoderAgent(PersistentAgent):
             context=json.dumps(context, indent=2)
         )
         
-        # Use ainvoke with HumanMessage for modern LangChain
-        from langchain_core.messages import HumanMessage
-        response_message = await self.llm.ainvoke([HumanMessage(content=prompt)])
-        response = response_message.content
+        response = await self.llm.apredict(prompt)
         parsed = self.code_parser.parse(response)
         
         fixed_code = None
@@ -430,10 +419,7 @@ class CoderAgent(PersistentAgent):
             targets=json.dumps(targets, indent=2)
         )
         
-        # Use ainvoke with HumanMessage for modern LangChain
-        from langchain_core.messages import HumanMessage
-        response_message = await self.llm.ainvoke([HumanMessage(content=prompt)])
-        response = response_message.content
+        response = await self.llm.apredict(prompt)
         parsed = self.code_parser.parse(response)
         
         optimized_code = None
@@ -467,10 +453,7 @@ class CoderAgent(PersistentAgent):
             audience=audience
         )
         
-        # Use ainvoke with HumanMessage for modern LangChain
-        from langchain_core.messages import HumanMessage
-        response_message = await self.llm.ainvoke([HumanMessage(content=prompt)])
-        response = response_message.content
+        response = await self.llm.apredict(prompt)
         parsed = self.code_parser.parse(response)
         
         documented_code = None

@@ -1,0 +1,27 @@
+INFO:     Will watch for changes in these directories: ['/home/aadel/projects/22_MyAgent']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [2938068] using WatchFiles
+[32m2025-11-16 01:40:37[0m | [1mINFO    [0m | [36mconfig.logging_config[0m:[36msetup_logging[0m:[36m100[0m - [1mLogging configured: level=INFO, file_logging=True[0m
+INFO:     Started server process [2938071]
+INFO:     Waiting for application startup.
+[32m2025-11-16 01:40:37[0m | [1mINFO    [0m | [36mapi.main[0m:[36mlifespan[0m:[36m103[0m - [1mStarting Continuous AI Builder API[0m
+[32m2025-11-16 01:40:37[0m | [1mINFO    [0m | [36mconfig.database[0m:[36mconnect[0m:[36m26[0m - [1mConnecting to database (attempt 1/3)...[0m
+[32m2025-11-16 01:40:38[0m | [32m[1mSUCCESS [0m | [36mconfig.database[0m:[36mconnect[0m:[36m44[0m - [32m[1mDatabase connection pool created successfully[0m
+[32m2025-11-16 01:40:38[0m | [31m[1mERROR   [0m | [36mapi.main[0m:[36mlifespan[0m:[36m110[0m - [31m[1mFailed to initialize database: permission denied for schema public[0m
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'core/orchestrator/milestone_tracker.py', 'test_all_gpt5_improvements.py', 'core/orchestrator/checkpoint_manager.py', 'core/review/__init__.py', 'init.py', 'test_api.py', 'bug_report_gpt5_limitation.py', 'core/memory/vector_memory.py', 'core/orchestrator/__init__.py', 'core/memory/memory_orchestrator.py', 'core/memory/__init__.py', 'core/agents/architect_agent.py', 'core/agents/analyzer_agent.py', 'make_real_gpt5_call.py', 'core/agents/coder_agent.py', 'core/agents/gpt5_direct_client.py', 'core/orchestrator/progress_analyzer.py', 'force_gpt5_usage.py', 'core/agents/base_agent.py', 'gpt5_performance_benchmark.py', 'core/learning/reinforcement_learning_engine.py', 'core/memory/project_ledger.py', 'gpt5_system_analysis.py', 'core/agents/tester_agent.py', 'core/evaluation/__init__.py', 'core/governance/meta_governor.py', 'core/agents/__init__.py', 'core/learning/pattern_recognition.py', 'core/governance/__init__.py', 'test_gpt5_direct.py', 'core/learning/__init__.py', 'core/agents/debugger_agent.py', 'core/communication/agent_message_bus.py', 'core/review/human_review_gateway.py', 'core/memory/error_knowledge_graph.py', 'core/communication/__init__.py', 'core/agents/ui_refiner_agent.py', 'core/agents/modular_skills.py', 'continuous_operation_setup.py', 'core/__init__.py', 'deploy_gpt5_improvements.py', 'core/agents/example_skills.py', 'core/orchestrator/continuous_director.py', 'core/evaluation/iteration_quality_framework.py', 'comprehensive_gpt5_validation.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+[32m2025-11-16 02:02:40[0m | [1mINFO    [0m | [36mapi.main[0m:[36mlifespan[0m:[36m115[0m - [1mShutting down Continuous AI Builder API[0m
+[32m2025-11-16 02:02:40[0m | [1mINFO    [0m | [36mconfig.database[0m:[36mdisconnect[0m:[36m61[0m - [1mDatabase connection pool closed[0m
+[32m2025-11-16 02:02:40[0m | [1mINFO    [0m | [36mapi.main[0m:[36mlifespan[0m:[36m123[0m - [1mDatabase connection closed[0m
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2938071]
+[32m2025-11-16 02:03:05[0m | [1mINFO    [0m | [36mconfig.logging_config[0m:[36msetup_logging[0m:[36m100[0m - [1mLogging configured: level=INFO, file_logging=True[0m
+INFO:     Started server process [2944939]
+INFO:     Waiting for application startup.
+[32m2025-11-16 02:03:05[0m | [1mINFO    [0m | [36mapi.main[0m:[36mlifespan[0m:[36m103[0m - [1mStarting Continuous AI Builder API[0m
+[32m2025-11-16 02:03:05[0m | [1mINFO    [0m | [36mconfig.database[0m:[36mconnect[0m:[36m26[0m - [1mConnecting to database (attempt 1/3)...[0m
+[32m2025-11-16 02:03:05[0m | [32m[1mSUCCESS [0m | [36mconfig.database[0m:[36mconnect[0m:[36m44[0m - [32m[1mDatabase connection pool created successfully[0m
+[32m2025-11-16 02:03:05[0m | [31m[1mERROR   [0m | [36mapi.main[0m:[36mlifespan[0m:[36m110[0m - [31m[1mFailed to initialize database: permission denied for schema public[0m
+INFO:     Application startup complete.

@@ -1,0 +1,114 @@
+# Testing Dependencies for MyAgent Comprehensive Test Suite
+
+# Core testing framework
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+pytest-benchmark>=4.0.0
+pytest-timeout>=2.1.0
+pytest-xdist>=3.3.0
+pytest-html>=3.2.0
+
+# Performance testing
+psutil>=5.9.0
+aiohttp>=3.8.0
+requests>=2.31.0
+
+# Database testing
+asyncpg>=0.28.0
+sqlalchemy>=2.0.0
+alembic>=1.11.0
+
+# UI/Usability testing
+selenium>=4.11.0
+playwright>=1.37.0
+axe-core-python>=4.7.0
+
+# Security testing
+bandit>=1.7.0
+safety>=2.3.0
+
+# Code quality
+black>=23.7.0
+isort>=5.12.0
+flake8>=6.0.0
+pylint>=2.17.0
+mypy>=1.5.0
+
+# API testing
+httpx>=0.24.0
+fastapi[all]>=0.103.0
+websockets>=11.0.0
+
+# Memory and caching
+redis>=4.6.0
+fakeredis>=2.16.0
+
+# Machine learning testing
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+
+# Mock data generation
+faker>=19.3.0
+factory-boy>=3.3.0
+
+# Documentation testing
+sphinx>=7.1.0
+sphinx-rtd-theme>=1.3.0
+
+# Development utilities
+ipython>=8.14.0
+jupyter>=1.0.0
+tqdm>=4.65.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+pydantic[email]>=2.1.0
+
+# Logging and monitoring
+structlog>=23.1.0
+prometheus-client>=0.17.0
+
+# File handling and utilities
+pathlib2>=2.3.0
+click>=8.1.0
+typer>=0.9.0
+
+# Network testing
+aiofiles>=23.1.0
+watchdog>=3.0.0
+
+# Container testing (if Docker tests needed)
+docker>=6.1.0
+testcontainers>=3.7.0
+
+# Cloud testing utilities
+boto3>=1.28.0  # For AWS testing
+google-cloud-storage>=2.10.0  # For GCP testing
+
+# Time and date testing
+freezegun>=1.2.0
+python-dateutil>=2.8.0
+
+# JSON/YAML testing
+jsonschema>=4.19.0
+pyyaml>=6.0.0
+
+# Image processing testing
+Pillow>=10.0.0
+
+# Excel/CSV testing
+openpyxl>=3.1.0
+xlsxwriter>=3.1.0
+
+# Encryption testing
+cryptography>=41.0.0
+
+# Graph database testing (for knowledge graph tests)
+networkx>=3.1.0
+
+# Additional asyncio utilities
+asyncio-mqtt>=0.16.0
+aio-pika>=9.2.0  # For RabbitMQ testing if needed
