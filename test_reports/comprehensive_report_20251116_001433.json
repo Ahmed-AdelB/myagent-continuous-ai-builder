@@ -1,0 +1,167 @@
+{
+  "summary": {
+    "total_passed": 13,
+    "total_failed": 3,
+    "success_rate": 81.25,
+    "execution_time": 3.722352,
+    "timestamp": "2025-11-16T00:14:33.515111"
+  },
+  "results": {
+    "Unit": {
+      "passed": 3,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "ProjectLedger basic operations",
+          "status": true,
+          "details": "Recorded 1 decisions",
+          "execution_time": 0.03484511375427246
+        },
+        {
+          "name": "AgentState enum",
+          "status": true,
+          "details": "State value: idle",
+          "execution_time": 3.504753112792969e-05
+        },
+        {
+          "name": "VectorMemory initialization",
+          "status": true,
+          "details": "Vector memory created",
+          "execution_time": 1.7185890674591064
+        }
+      ]
+    },
+    "Integration": {
+      "passed": 0,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Orchestrator-Ledger",
+          "status": false,
+          "details": "'ContinuousDirector' object has no attribute 'ledger'",
+          "execution_time": 0.0009760856628417969
+        }
+      ]
+    },
+    "System": {
+      "passed": 0,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Full workflow initialization",
+          "status": false,
+          "details": "'ContinuousDirector' object has no attribute 'update_quality_metrics'",
+          "execution_time": 0.0005567073822021484
+        }
+      ]
+    },
+    "Acceptance": {
+      "passed": 1,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "Real app requirements",
+          "status": true,
+          "details": "Validated 5 features",
+          "execution_time": 0.0004177093505859375
+        }
+      ]
+    },
+    "Performance": {
+      "passed": 2,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "Memory scaling",
+          "status": true,
+          "details": "Memory growth: 0.00MB",
+          "execution_time": 0.004992485046386719
+        },
+        {
+          "name": "Database bulk operations",
+          "status": true,
+          "details": "Processed 100 decisions in database",
+          "execution_time": 0.5093722343444824
+        }
+      ]
+    },
+    "Security": {
+      "passed": 2,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "API key protection",
+          "status": true,
+          "details": "API keys loaded securely",
+          "execution_time": 0.0016307830810546875
+        },
+        {
+          "name": "SQL injection protection",
+          "status": true,
+          "details": "SQL injection prevented",
+          "execution_time": 0.028346538543701172
+        }
+      ]
+    },
+    "Regression": {
+      "passed": 1,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "Previous bug fixes stable",
+          "status": true,
+          "details": "Bugs fixed: 1=True, 2=True, 3=True, 4=True",
+          "execution_time": 0.0279083251953125
+        }
+      ]
+    },
+    "Data Validation": {
+      "passed": 1,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Database persistence integrity",
+          "status": true,
+          "details": "Code version persisted and retrieved correctly",
+          "execution_time": 0.03230714797973633
+        },
+        {
+          "name": "Memory consistency",
+          "status": false,
+          "details": "Unknown memory type: This is a test memory for validation",
+          "execution_time": 1.3302903175354004
+        }
+      ]
+    },
+    "Model Validation": {
+      "passed": 1,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "Agent capability validation",
+          "status": true,
+          "details": "Agent properly implements required methods",
+          "execution_time": 0.0013685226440429688
+        }
+      ]
+    },
+    "MLOps": {
+      "passed": 2,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "Data pipeline integrity",
+          "status": true,
+          "details": "Data pipeline structure validated",
+          "execution_time": 0.0006327629089355469
+        },
+        {
+          "name": "Model performance monitoring",
+          "status": true,
+          "details": "Performance metrics tracked correctly",
+          "execution_time": 0.029157161712646484
+        }
+      ]
+    }
+  }
+}

@@ -931,3 +931,25 @@ class ContinuousDirector:
             weak_metrics["bug_count_critical"] = metrics["bug_count_critical"]
 
         return weak_metrics
+
+    @property
+    def ledger(self):
+        """Get or create project ledger"""
+        if not hasattr(self, '_ledger'):
+            from core.memory.project_ledger import ProjectLedger
+            self._ledger = ProjectLedger(self.project_name)
+        return self._ledger
+    
+    def update_quality_metrics(self, new_metrics: Dict):
+        """Update quality metrics"""
+        for key, value in new_metrics.items():
+            if hasattr(self.metrics, key):
+                setattr(self.metrics, key, value)
+        
+        # Log the update
+        self.ledger.record_decision(
+            self.iteration_count,
+            "orchestrator", 
+            "quality_metrics_update",
+            f"Updated quality metrics: {new_metrics}"
+        )

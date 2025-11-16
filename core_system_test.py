@@ -46,9 +46,9 @@ class CoreSystemTest:
         try:
             # Test Project Ledger
             ledger = ProjectLedger('test_project_123')
-            await ledger.log_event('system_test', {'action': 'test_initialization'})
-            events = await ledger.get_events()
-            self.log_test("Project Ledger", len(events) > 0, f"Logged {len(events)} events")
+            ledger.record_decision(1, "system_test_agent", "system_test", "Test initialization")
+            decisions = ledger.decision_log[:5]  # Get recent decisions
+            self.log_test("Project Ledger", len(decisions) > 0, f"Logged {len(decisions)} events")
             
             # Test Vector Memory
             vector_memory = VectorMemory('test_project_123')
@@ -153,7 +153,7 @@ class CoreSystemTest:
             }
             
             # Initialize orchestrator
-            orchestrator = ContinuousDirector(project_spec, project_id="test_123")
+            orchestrator = ContinuousDirector("test_123", project_spec)
             await orchestrator.initialize()
             
             self.log_test("Orchestrator Setup", True, "Initialized with test project")
