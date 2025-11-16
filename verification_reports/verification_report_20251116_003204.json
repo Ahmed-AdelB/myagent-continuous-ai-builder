@@ -1,0 +1,449 @@
+{
+  "timestamp": "2025-11-16T00:32:04.242822",
+  "overall_health": 95.71428571428572,
+  "execution_time": 21.992671,
+  "results": {
+    "system_health": {
+      "score": 0,
+      "max_score": 0,
+      "details": []
+    },
+    "api_server": {
+      "status": "unhealthy",
+      "details": [
+        {
+          "status": false,
+          "detail": "API server not accessible on localhost:8000",
+          "timestamp": "2025-11-16T00:31:42.255057"
+        },
+        {
+          "status": false,
+          "detail": "No uvicorn API server process found",
+          "timestamp": "2025-11-16T00:31:42.279874"
+        }
+      ],
+      "max_score": 2
+    },
+    "database": {
+      "status": "healthy",
+      "details": [
+        {
+          "status": true,
+          "detail": "PostgreSQL connected: PostgreSQL 15.14 (Debian 15.14-0+deb12u1) on x86_6...",
+          "timestamp": "2025-11-16T00:31:42.489088"
+        },
+        {
+          "status": true,
+          "detail": "Connected to database: myagent_db",
+          "timestamp": "2025-11-16T00:31:42.489964"
+        },
+        {
+          "status": true,
+          "detail": "Database has 0 tables",
+          "timestamp": "2025-11-16T00:31:42.519853"
+        },
+        {
+          "status": true,
+          "detail": "Redis connection successful",
+          "timestamp": "2025-11-16T00:31:42.649393"
+        },
+        {
+          "status": true,
+          "detail": "Redis read/write operations working",
+          "timestamp": "2025-11-16T00:31:42.653562"
+        },
+        {
+          "status": true,
+          "detail": "Redis version: 7.0.15",
+          "timestamp": "2025-11-16T00:31:42.660789"
+        }
+      ],
+      "score": 6,
+      "max_score": 6
+    },
+    "orchestrator": {
+      "status": "healthy",
+      "details": [
+        {
+          "status": true,
+          "detail": "Orchestrator initialization successful",
+          "timestamp": "2025-11-16T00:32:02.182856"
+        },
+        {
+          "status": true,
+          "detail": "Project specification properly stored",
+          "timestamp": "2025-11-16T00:32:02.182891"
+        },
+        {
+          "status": true,
+          "detail": "Quality metrics update working",
+          "timestamp": "2025-11-16T00:32:02.223754"
+        },
+        {
+          "status": true,
+          "detail": "Ledger integration working",
+          "timestamp": "2025-11-16T00:32:02.228980"
+        },
+        {
+          "status": true,
+          "detail": "Agent registry initialized",
+          "timestamp": "2025-11-16T00:32:02.229005"
+        },
+        {
+          "status": true,
+          "detail": "Iteration tracking available (current: 0)",
+          "timestamp": "2025-11-16T00:32:02.229016"
+        }
+      ],
+      "score": 6,
+      "max_score": 6
+    },
+    "agents": {
+      "status": "healthy",
+      "details": [
+        {
+          "status": true,
+          "detail": "AgentState enum working: idle, working",
+          "timestamp": "2025-11-16T00:32:02.229122"
+        },
+        {
+          "status": true,
+          "detail": "Agent created successfully: verification_agent",
+          "timestamp": "2025-11-16T00:32:02.231930"
+        },
+        {
+          "status": true,
+          "detail": "Agent starts in IDLE state",
+          "timestamp": "2025-11-16T00:32:02.231974"
+        },
+        {
+          "status": true,
+          "detail": "Agent capability checking works",
+          "timestamp": "2025-11-16T00:32:02.231985"
+        },
+        {
+          "status": true,
+          "detail": "Agent task processing working",
+          "timestamp": "2025-11-16T00:32:02.232016"
+        },
+        {
+          "status": true,
+          "detail": "Agent context analysis working",
+          "timestamp": "2025-11-16T00:32:02.232029"
+        },
+        {
+          "status": true,
+          "detail": "Agent solution generation working",
+          "timestamp": "2025-11-16T00:32:02.232039"
+        },
+        {
+          "status": true,
+          "detail": "Agent memory system initialized",
+          "timestamp": "2025-11-16T00:32:02.232049"
+        }
+      ],
+      "score": 8,
+      "max_score": 8
+    },
+    "memory": {
+      "status": "healthy",
+      "details": [
+        {
+          "status": true,
+          "detail": "ProjectLedger initialization successful",
+          "timestamp": "2025-11-16T00:32:02.261210"
+        },
+        {
+          "status": true,
+          "detail": "Decision recording working (1 decisions)",
+          "timestamp": "2025-11-16T00:32:02.267375"
+        },
+        {
+          "status": true,
+          "detail": "Code version saved: v_1_verification_agent_20251116_003202",
+          "timestamp": "2025-11-16T00:32:02.276628"
+        },
+        {
+          "status": true,
+          "detail": "Code version retrieval working",
+          "timestamp": "2025-11-16T00:32:02.276661"
+        },
+        {
+          "status": true,
+          "detail": "Iteration summary generation working",
+          "timestamp": "2025-11-16T00:32:02.277246"
+        },
+        {
+          "status": true,
+          "detail": "VectorMemory initialization successful",
+          "timestamp": "2025-11-16T00:32:04.108931"
+        },
+        {
+          "status": true,
+          "detail": "Vector collections available: ['code', 'decisions', 'errors', 'context', 'patterns']",
+          "timestamp": "2025-11-16T00:32:04.108987"
+        }
+      ],
+      "score": 7,
+      "max_score": 7
+    },
+    "environment": {
+      "status": "healthy",
+      "details": [
+        {
+          "status": true,
+          "detail": "OPENAI_API_KEY configured correctly",
+          "timestamp": "2025-11-16T00:32:04.110836"
+        },
+        {
+          "status": true,
+          "detail": "ANTHROPIC_API_KEY configured correctly",
+          "timestamp": "2025-11-16T00:32:04.110870"
+        },
+        {
+          "status": true,
+          "detail": "POSTGRES_URL configured correctly",
+          "timestamp": "2025-11-16T00:32:04.110879"
+        },
+        {
+          "status": true,
+          "detail": "REDIS_URL configured: redis://localhost:6379",
+          "timestamp": "2025-11-16T00:32:04.110888"
+        },
+        {
+          "status": true,
+          "detail": "DEV_MODE configured: true",
+          "timestamp": "2025-11-16T00:32:04.110896"
+        },
+        {
+          "status": true,
+          "detail": "LOG_LEVEL configured: INFO",
+          "timestamp": "2025-11-16T00:32:04.110903"
+        },
+        {
+          "status": true,
+          "detail": "Python version compatible: 3.11",
+          "timestamp": "2025-11-16T00:32:04.110916"
+        }
+      ],
+      "score": 7,
+      "max_score": 7
+    },
+    "files": {
+      "status": "healthy",
+      "details": [
+        {
+          "status": true,
+          "detail": "core/orchestrator/continuous_director.py exists (36325 bytes)",
+          "timestamp": "2025-11-16T00:32:04.111019"
+        },
+        {
+          "status": true,
+          "detail": "core/memory/project_ledger.py exists (15731 bytes)",
+          "timestamp": "2025-11-16T00:32:04.111057"
+        },
+        {
+          "status": true,
+          "detail": "core/agents/base_agent.py exists (17418 bytes)",
+          "timestamp": "2025-11-16T00:32:04.111090"
+        },
+        {
+          "status": true,
+          "detail": "core/memory/vector_memory.py exists (13632 bytes)",
+          "timestamp": "2025-11-16T00:32:04.111118"
+        },
+        {
+          "status": true,
+          "detail": "api/main.py exists (19560 bytes)",
+          "timestamp": "2025-11-16T00:32:04.111150"
+        },
+        {
+          "status": true,
+          "detail": "requirements.txt exists (1313 bytes)",
+          "timestamp": "2025-11-16T00:32:04.111177"
+        },
+        {
+          "status": true,
+          "detail": ".env exists (637 bytes)",
+          "timestamp": "2025-11-16T00:32:04.111213"
+        },
+        {
+          "status": true,
+          "detail": "README.md exists (8199 bytes)",
+          "timestamp": "2025-11-16T00:32:04.111249"
+        },
+        {
+          "status": true,
+          "detail": "persistence/database/ directory exists",
+          "timestamp": "2025-11-16T00:32:04.111286"
+        },
+        {
+          "status": true,
+          "detail": "persistence/database/ is writable",
+          "timestamp": "2025-11-16T00:32:04.111323"
+        },
+        {
+          "status": true,
+          "detail": "persistence/storage/ directory exists",
+          "timestamp": "2025-11-16T00:32:04.111351"
+        },
+        {
+          "status": true,
+          "detail": "persistence/storage/ is writable",
+          "timestamp": "2025-11-16T00:32:04.111362"
+        },
+        {
+          "status": true,
+          "detail": "logs/ directory exists",
+          "timestamp": "2025-11-16T00:32:04.111387"
+        },
+        {
+          "status": true,
+          "detail": "logs/ is writable",
+          "timestamp": "2025-11-16T00:32:04.111396"
+        },
+        {
+          "status": true,
+          "detail": "test_reports/ directory exists",
+          "timestamp": "2025-11-16T00:32:04.111419"
+        },
+        {
+          "status": true,
+          "detail": "test_reports/ is writable",
+          "timestamp": "2025-11-16T00:32:04.111429"
+        },
+        {
+          "status": true,
+          "detail": "core/ directory exists",
+          "timestamp": "2025-11-16T00:32:04.111451"
+        },
+        {
+          "status": true,
+          "detail": "core/ is writable",
+          "timestamp": "2025-11-16T00:32:04.111460"
+        },
+        {
+          "status": true,
+          "detail": "api/ directory exists",
+          "timestamp": "2025-11-16T00:32:04.111483"
+        },
+        {
+          "status": true,
+          "detail": "api/ is writable",
+          "timestamp": "2025-11-16T00:32:04.111493"
+        },
+        {
+          "status": true,
+          "detail": "Recent file comprehensive_test_suite.py exists",
+          "timestamp": "2025-11-16T00:32:04.111520"
+        },
+        {
+          "status": true,
+          "detail": "Recent file FINAL_SYSTEM_REPORT.md exists",
+          "timestamp": "2025-11-16T00:32:04.111539"
+        },
+        {
+          "status": true,
+          "detail": "Recent file test_reports/comprehensive_report_20251116_001631.json exists",
+          "timestamp": "2025-11-16T00:32:04.111560"
+        }
+      ],
+      "score": 23,
+      "max_score": 23
+    },
+    "performance": {
+      "status": "healthy",
+      "details": [
+        {
+          "status": true,
+          "detail": "Memory usage healthy: 69.7%",
+          "timestamp": "2025-11-16T00:32:04.111980"
+        },
+        {
+          "status": true,
+          "detail": "Disk usage healthy: 11.4%",
+          "timestamp": "2025-11-16T00:32:04.111998"
+        },
+        {
+          "status": true,
+          "detail": "CPU cores available: 2",
+          "timestamp": "2025-11-16T00:32:04.112005"
+        },
+        {
+          "status": true,
+          "detail": "Database query fast: 0.030s",
+          "timestamp": "2025-11-16T00:32:04.142120"
+        },
+        {
+          "status": true,
+          "detail": "Module import fast: 0.000s",
+          "timestamp": "2025-11-16T00:32:04.142203"
+        }
+      ],
+      "score": 5,
+      "max_score": 5
+    },
+    "github": {
+      "status": "healthy",
+      "details": [
+        {
+          "status": true,
+          "detail": "Git repository accessible",
+          "timestamp": "2025-11-16T00:32:04.235204"
+        },
+        {
+          "status": false,
+          "detail": "Uncommitted changes found: 10",
+          "timestamp": "2025-11-16T00:32:04.235252"
+        },
+        {
+          "status": true,
+          "detail": "Git remote configured",
+          "timestamp": "2025-11-16T00:32:04.241986"
+        },
+        {
+          "status": true,
+          "detail": "GitHub remote detected",
+          "timestamp": "2025-11-16T00:32:04.242061"
+        },
+        {
+          "status": true,
+          "detail": "Auto-sync script exists",
+          "timestamp": "2025-11-16T00:32:04.242197"
+        },
+        {
+          "status": true,
+          "detail": "Auto-sync script is executable",
+          "timestamp": "2025-11-16T00:32:04.242227"
+        }
+      ],
+      "score": 5,
+      "max_score": 6
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "action": "Start API server: uvicorn api.main:app --host 0.0.0.0 --port 8000",
+      "reason": "API server not running",
+      "category": "action_required"
+    },
+    {
+      "priority": "LOW",
+      "action": "Commit pending changes",
+      "reason": "Uncommitted work found",
+      "category": "action_required"
+    }
+  ],
+  "category_health": {
+    "api_server": 0.0,
+    "database": 100.0,
+    "orchestrator": 100.0,
+    "agents": 100.0,
+    "memory": 100.0,
+    "environment": 100.0,
+    "files": 100.0,
+    "performance": 100.0,
+    "github": 83.33333333333334
+  }
+}
