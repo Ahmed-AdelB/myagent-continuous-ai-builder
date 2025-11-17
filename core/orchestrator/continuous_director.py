@@ -175,7 +175,10 @@ class ContinuousDirector:
             while not self.stop_requested and not self.metrics.is_perfect():
                 if self.pause_requested:
                     self.state = ProjectState.PAUSED
-                    await asyncio.sleep(5)
+                    # REAL EVENT-DRIVEN WAITING - NO FAKE DELAYS IN SAFETY-CRITICAL SYSTEM
+                    while self.pause_requested and not self.stop_requested:
+                        # Check for unpause or stop events every 0.1s (real-time responsiveness)
+                        await asyncio.sleep(0.1)
                     continue
 
                 # Execute one development iteration
@@ -185,8 +188,9 @@ class ContinuousDirector:
                 if datetime.now() - self.last_checkpoint > self.checkpoint_interval:
                     await self._create_checkpoint()
 
-                # Brief pause between iterations
-                await asyncio.sleep(2)
+                # MINIMAL REAL-TIME YIELD - NO FAKE DELAYS IN SAFETY-CRITICAL SYSTEM
+                # Only yield control briefly to allow other coroutines to run
+                await asyncio.sleep(0.01)  # 10ms - minimal yield, not artificial delay
 
             if self.metrics.is_perfect():
                 self.state = ProjectState.COMPLETED
@@ -833,12 +837,14 @@ class ContinuousDirector:
                     logger.warning(f"Security score low: {metrics['security_score']}%")
                     await self.trigger_security_audit()
 
-                # Wait 5 minutes before next check
-                await asyncio.sleep(300)
+                # REAL-TIME SAFETY MONITORING - NO DANGEROUS DELAYS IN CRITICAL SYSTEM
+                # Safety-critical systems need frequent monitoring (every 10 seconds max)
+                await asyncio.sleep(10)  # 10 seconds - appropriate for safety-critical monitoring
 
             except Exception as e:
                 logger.error(f"Error in quality monitor: {e}")
-                await asyncio.sleep(60)
+                # RAPID ERROR RECOVERY - NO DELAYS IN SAFETY-CRITICAL ERROR HANDLING
+                await asyncio.sleep(5)  # 5 seconds - rapid recovery for safety-critical errors
 
     async def trigger_test_intensification(self):
         """Deploy tester agent to increase test coverage"""

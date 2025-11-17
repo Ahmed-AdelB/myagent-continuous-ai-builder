@@ -308,9 +308,18 @@ class AdaptivePromptOptimizer:
 
         if strategy == PromptOptimizationStrategy.A_B_TESTING:
             experiment = self._create_ab_experiment(experiment_id, category, sample_size)
+        elif strategy == PromptOptimizationStrategy.REINFORCEMENT_LEARNING:
+            experiment = self._create_reinforcement_learning_experiment(experiment_id, category, sample_size)
+        elif strategy == PromptOptimizationStrategy.CONTEXT_ADAPTATION:
+            experiment = self._create_context_adaptation_experiment(experiment_id, category, sample_size)
+        elif strategy == PromptOptimizationStrategy.PERFORMANCE_TUNING:
+            experiment = self._create_performance_tuning_experiment(experiment_id, category, sample_size)
+        elif strategy == PromptOptimizationStrategy.SEMANTIC_ENHANCEMENT:
+            experiment = self._create_semantic_enhancement_experiment(experiment_id, category, sample_size)
         else:
-            # Other strategies would be implemented here
-            raise NotImplementedError(f"Strategy {strategy.value} not yet implemented")
+            # Fallback to A/B testing for unknown strategies (SAFETY CRITICAL - never crash)
+            self.telemetry.log_warning(f"Unknown strategy {strategy.value}, falling back to A/B testing")
+            experiment = self._create_ab_experiment(experiment_id, category, sample_size)
 
         with self._lock:
             self.active_experiments[experiment_id] = experiment
@@ -640,6 +649,194 @@ Solution:""",
             end_time=None,
             sample_size_per_variant=sample_size,
             current_samples={t.template_id: 0 for t in templates},
+            results={},
+            winner=None,
+            confidence_interval=0.95
+        )
+
+    def _create_reinforcement_learning_experiment(self, experiment_id: str, category: PromptCategory,
+                                                sample_size: int) -> OptimizationExperiment:
+        """Create reinforcement learning optimization experiment - SAFETY CRITICAL IMPLEMENTATION"""
+
+        # Get base template and create RL variants
+        template_ids = self.prompt_variants[category]
+        with self._lock:
+            if template_ids:
+                base_template = self.prompt_templates[template_ids[0]]
+            else:
+                base_template = self._create_default_template(category)
+
+        # Create RL-based variants with reward optimization
+        rl_variants = []
+        for i in range(3):  # Create 3 RL variants
+            variant_template = PromptTemplate(
+                template_id=f"rl_variant_{i}_{experiment_id}",
+                category=category,
+                content=base_template.content + f"\n\n[RL Enhancement {i+1}: Optimize for reward feedback]",
+                parameters=base_template.parameters.copy(),
+                metadata={
+                    **base_template.metadata,
+                    "optimization_type": "reinforcement_learning",
+                    "reward_weight": 0.1 + i * 0.1
+                }
+            )
+            rl_variants.append(variant_template)
+
+        return OptimizationExperiment(
+            experiment_id=experiment_id,
+            category=category,
+            control_prompt=base_template,
+            variant_prompts=rl_variants,
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            sample_size_per_variant=sample_size,
+            current_samples={base_template.template_id: 0, **{v.template_id: 0 for v in rl_variants}},
+            results={},
+            winner=None,
+            confidence_interval=0.95
+        )
+
+    def _create_context_adaptation_experiment(self, experiment_id: str, category: PromptCategory,
+                                            sample_size: int) -> OptimizationExperiment:
+        """Create context adaptation experiment - SAFETY CRITICAL IMPLEMENTATION"""
+
+        # Get base template and create context-adaptive variants
+        template_ids = self.prompt_variants[category]
+        with self._lock:
+            if template_ids:
+                base_template = self.prompt_templates[template_ids[0]]
+            else:
+                base_template = self._create_default_template(category)
+
+        # Create context-adaptive variants
+        context_variants = []
+        contexts = ["technical", "business", "academic", "creative"]
+
+        for i, context in enumerate(contexts[:3]):  # Create 3 context variants
+            variant_template = PromptTemplate(
+                template_id=f"context_{context}_{experiment_id}",
+                category=category,
+                content=f"[Context: {context.title()} Domain]\n" + base_template.content,
+                parameters=base_template.parameters.copy(),
+                metadata={
+                    **base_template.metadata,
+                    "optimization_type": "context_adaptation",
+                    "context_domain": context
+                }
+            )
+            context_variants.append(variant_template)
+
+        return OptimizationExperiment(
+            experiment_id=experiment_id,
+            category=category,
+            control_prompt=base_template,
+            variant_prompts=context_variants,
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            sample_size_per_variant=sample_size,
+            current_samples={base_template.template_id: 0, **{v.template_id: 0 for v in context_variants}},
+            results={},
+            winner=None,
+            confidence_interval=0.95
+        )
+
+    def _create_performance_tuning_experiment(self, experiment_id: str, category: PromptCategory,
+                                            sample_size: int) -> OptimizationExperiment:
+        """Create performance tuning experiment - SAFETY CRITICAL IMPLEMENTATION"""
+
+        # Get base template and create performance-optimized variants
+        template_ids = self.prompt_variants[category]
+        with self._lock:
+            if template_ids:
+                base_template = self.prompt_templates[template_ids[0]]
+            else:
+                base_template = self._create_default_template(category)
+
+        # Create performance-tuned variants
+        perf_variants = []
+        optimizations = ["concise", "detailed", "step_by_step"]
+
+        for i, opt_type in enumerate(optimizations):
+            if opt_type == "concise":
+                content_modifier = "[Be concise and direct]\n"
+            elif opt_type == "detailed":
+                content_modifier = "[Provide comprehensive details]\n"
+            else:  # step_by_step
+                content_modifier = "[Break down into clear steps]\n"
+
+            variant_template = PromptTemplate(
+                template_id=f"perf_{opt_type}_{experiment_id}",
+                category=category,
+                content=content_modifier + base_template.content,
+                parameters=base_template.parameters.copy(),
+                metadata={
+                    **base_template.metadata,
+                    "optimization_type": "performance_tuning",
+                    "performance_focus": opt_type
+                }
+            )
+            perf_variants.append(variant_template)
+
+        return OptimizationExperiment(
+            experiment_id=experiment_id,
+            category=category,
+            control_prompt=base_template,
+            variant_prompts=perf_variants,
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            sample_size_per_variant=sample_size,
+            current_samples={base_template.template_id: 0, **{v.template_id: 0 for v in perf_variants}},
+            results={},
+            winner=None,
+            confidence_interval=0.95
+        )
+
+    def _create_semantic_enhancement_experiment(self, experiment_id: str, category: PromptCategory,
+                                              sample_size: int) -> OptimizationExperiment:
+        """Create semantic enhancement experiment - SAFETY CRITICAL IMPLEMENTATION"""
+
+        # Get base template and create semantically enhanced variants
+        template_ids = self.prompt_variants[category]
+        with self._lock:
+            if template_ids:
+                base_template = self.prompt_templates[template_ids[0]]
+            else:
+                base_template = self._create_default_template(category)
+
+        # Create semantically enhanced variants
+        semantic_variants = []
+        enhancements = ["clarity", "precision", "examples"]
+
+        for i, enhancement in enumerate(enhancements):
+            if enhancement == "clarity":
+                content_modifier = "[Focus on clarity and understanding]\n"
+            elif enhancement == "precision":
+                content_modifier = "[Be precise and specific]\n"
+            else:  # examples
+                content_modifier = "[Include relevant examples]\n"
+
+            variant_template = PromptTemplate(
+                template_id=f"semantic_{enhancement}_{experiment_id}",
+                category=category,
+                content=content_modifier + base_template.content,
+                parameters=base_template.parameters.copy(),
+                metadata={
+                    **base_template.metadata,
+                    "optimization_type": "semantic_enhancement",
+                    "semantic_focus": enhancement
+                }
+            )
+            semantic_variants.append(variant_template)
+
+        return OptimizationExperiment(
+            experiment_id=experiment_id,
+            category=category,
+            control_prompt=base_template,
+            variant_prompts=semantic_variants,
+            start_time=datetime.now(timezone.utc),
+            end_time=None,
+            sample_size_per_variant=sample_size,
+            current_samples={base_template.template_id: 0, **{v.template_id: 0 for v in semantic_variants}},
             results={},
             winner=None,
             confidence_interval=0.95

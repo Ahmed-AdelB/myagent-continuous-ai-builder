@@ -140,7 +140,7 @@ class PersistentAgent(ABC):
                 if self.should_checkpoint():
                     self.save_checkpoint()
                 
-                await asyncio.sleep(0.1)  # Small delay to prevent CPU hogging
+                await asyncio.sleep(0.001)  # Minimal 1ms yield for safety-critical responsiveness
                 
             except Exception as e:
                 logger.error(f"Error in agent {self.name} main loop: {e}")
