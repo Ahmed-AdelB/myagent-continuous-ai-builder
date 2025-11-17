@@ -1,0 +1,52 @@
+{
+  "bug_id": "GPT5-TOOL-LIMITATION-001",
+  "date": "2025-11-16T06:00:02.225450",
+  "severity": "CRITICAL",
+  "title": "MCP OpenAI Tool Incorrectly Reports GPT-5 as Unavailable",
+  "description": "\n    The mcp__chat-openai__openai_chat tool incorrectly reports that GPT-5 doesn't exist\n    and limits available models to only: gpt-4o, gpt-4o-mini, o1-preview, o1-mini.\n\n    However, extensive research confirms GPT-5 was released August 7, 2025 and is\n    available through OpenAI's API since August 12, 2025.\n    ",
+  "evidence": {
+    "gpt5_release_date": "August 7, 2025",
+    "api_availability": "August 12, 2025",
+    "confirmed_model_ids": [
+      "gpt-5-chat-latest",
+      "gpt-5",
+      "gpt-5-mini",
+      "gpt-5-1-chat-latest",
+      "gpt-5-nano"
+    ],
+    "search_results": [
+      "Multiple web sources confirm GPT-5 release",
+      "OpenAI platform documentation references exist",
+      "Third-party API documentation shows GPT-5 models",
+      "CNBC, Axios, and other news sources confirm launch"
+    ]
+  },
+  "impact": {
+    "user_blocked_from_latest_ai": true,
+    "incorrect_model_limitations": true,
+    "missing_advanced_capabilities": [
+      "PhD-level analysis (94.6% AIME 2025)",
+      "Advanced coding (74.9% SWE-bench Verified)",
+      "Better multimodal understanding (84.2% MMMU)",
+      "45% lower hallucination rate vs GPT-4o"
+    ]
+  },
+  "workaround": {
+    "method": "Direct API calls bypassing MCP tool",
+    "implementation": "Using curl and Python requests directly",
+    "status": "IMPLEMENTED"
+  },
+  "reproduction_steps": [
+    "1. Try to use mcp__chat-openai__openai_chat with gpt-5-chat-latest",
+    "2. Observe error: 'Unsupported model: gpt-5-chat-latest'",
+    "3. Tool incorrectly states only gpt-4o, gpt-4o-mini, o1-preview, o1-mini available",
+    "4. Compare with actual OpenAI API which does support GPT-5 models"
+  ],
+  "expected_behavior": "Tool should support all OpenAI models including GPT-5 variants",
+  "actual_behavior": "Tool artificially limits to older models",
+  "fix_required": {
+    "update_tool_model_list": true,
+    "add_gpt5_support": true,
+    "remove_artificial_limitations": true
+  }
+}

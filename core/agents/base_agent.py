@@ -423,55 +423,16 @@ class PersistentAgent(ABC):
             "memory_size": len(self.memory.short_term)
         }
     
-    def has_capability(self, capability: str) -> bool:
-        """Check if agent has a specific capability"""
-        return capability in self.capabilities
-
-    async def update_strategy(self, successful_patterns: List, failure_patterns: List):
-        """Update agent strategy based on learning patterns"""
-        logger.info(f"Updating strategy for {self.name} with {len(successful_patterns)} successful and {len(failure_patterns)} failure patterns")
-
-        # Store successful patterns
-        for pattern in successful_patterns:
-            self.memory.learned_patterns.append({
-                'pattern': pattern,
-                'type': 'success',
-                'timestamp': datetime.now().isoformat(),
-                'confidence': pattern.get('confidence', 0.8)
-            })
-
-        # Store failure patterns for avoidance
-        for pattern in failure_patterns:
-            self.memory.error_encounters.append({
-                'pattern': pattern,
-                'type': 'failure',
-                'timestamp': datetime.now().isoformat(),
-                'severity': pattern.get('severity', 'medium')
-            })
-
-        # Cleanup old patterns (keep last 200)
-        if len(self.memory.learned_patterns) > 200:
-            self.memory.learned_patterns = self.memory.learned_patterns[-200:]
-        if len(self.memory.error_encounters) > 100:
-            self.memory.error_encounters = self.memory.error_encounters[-100:]
-
-        logger.success(f"Strategy updated for {self.name}")
-
-    @property
-    def status(self) -> str:
-        """Compatibility property for status (returns state value)"""
-        return self.state.value if isinstance(self.state, AgentState) else str(self.state)
-
     async def shutdown(self):
         """Gracefully shutdown the agent"""
         logger.info(f"Shutting down agent {self.name}")
-
+        
         # Save final checkpoint
         self.save_checkpoint()
-
+        
         # Complete current task if any
         if self.current_task:
             self.current_task.error = "Agent shutdown"
             self.completed_tasks.append(self.current_task)
-
+        
         self.state = AgentState.COMPLETED
