@@ -93,7 +93,7 @@ class MemoryOrchestrator:
 
         # Initialize subsystems
         self.project_ledger = ProjectLedger(project_name)
-        self.error_graph = ErrorKnowledgeGraph(project_name)
+        self.error_graph = ErrorKnowledgeGraph()  # ErrorKnowledgeGraph doesn't take parameters
         self.vector_memory = VectorMemory(project_name)
 
         # Initialize embedding model
@@ -521,29 +521,39 @@ class MemoryOrchestrator:
     async def _store_in_subsystem(self, memory_entry: MemoryEntry):
         """Store memory entry in appropriate subsystem"""
         if memory_entry.memory_type == MemoryType.ERROR_PATTERN:
-            # Store in error knowledge graph
-            await self.error_graph.add_error_pattern(
-                memory_entry.content,
-                memory_entry.metadata.get("error_type", "unknown"),
-                memory_entry.metadata.get("context", {}),
-                memory_entry.metadata.get("solution", "")
+            # Store in error knowledge graph (using add_error, not add_error_pattern)
+            error_node = self.error_graph.add_error(
+                error_type=memory_entry.metadata.get("error_type", "unknown"),
+                error_message=memory_entry.content,
+                context=memory_entry.metadata.get("context", {})
             )
 
+            # If there's a solution in metadata, add it too
+            solution = memory_entry.metadata.get("solution")
+            if solution:
+                self.error_graph.add_solution(
+                    error_id=error_node.id,
+                    solution_type="fix",
+                    description=solution,
+                    code_changes=memory_entry.metadata.get("code_changes", {})
+                )
+
         elif memory_entry.memory_type in [MemoryType.PROJECT_EVENT, MemoryType.CODE_CHANGE]:
-            # Store in project ledger
-            await self.project_ledger.record_decision(
-                memory_entry.metadata.get("iteration_id", 0),
-                memory_entry.metadata.get("agent_name", "unknown"),
-                memory_entry.metadata.get("decision_type", "general"),
-                memory_entry.content
+            # Store in project ledger (synchronous method, don't await)
+            self.project_ledger.record_decision(
+                iteration=memory_entry.metadata.get("iteration_id", 0),
+                agent=memory_entry.metadata.get("agent_name", "unknown"),
+                decision_type=memory_entry.metadata.get("decision_type", "general"),
+                description=memory_entry.content,
+                rationale=memory_entry.metadata.get("rationale", "")
             )
 
         else:
-            # Store in vector memory
-            await self.vector_memory.store_embedding(
-                memory_entry.content,
-                memory_entry.embedding,
-                memory_entry.metadata
+            # Store in vector memory (using store_memory, not store_embedding)
+            self.vector_memory.store_memory(
+                memory_type=memory_entry.memory_type.value,
+                content=memory_entry.content,
+                metadata=memory_entry.metadata
             )
 
     async def _create_automatic_links(self, memory_entry: MemoryEntry):

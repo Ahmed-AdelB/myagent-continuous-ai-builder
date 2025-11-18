@@ -333,8 +333,8 @@ class ContinuousDirector:
 
                 logger.info(f"Assigning task {task.id} to agent {agent}")
 
-                # Execute task
-                result = await self.agents[agent].execute_task(task)
+                # Execute task (agents implement process_task, not execute_task)
+                result = await self.agents[agent].process_task(task)
 
                 # Update task status
                 task.completed_at = datetime.now()
@@ -926,6 +926,62 @@ class ContinuousDirector:
         for metric, threshold in thresholds.items():
             if metric in metrics and metrics[metric] < threshold:
                 weak_metrics[metric] = metrics[metric]
+
+        return weak_metrics
+
+    async def on_agent_task_complete(self, agent_id: str, task: AgentTask):
+        """
+        Callback invoked by agents when they complete a task.
+
+        Args:
+            agent_id: ID of the agent that completed the task
+            task: The completed AgentTask
+        """
+        logger.info(f"Agent {agent_id} completed task {task.id}")
+
+        # Update metrics based on task results
+        if task.result:
+            # Log to project ledger if available
+            if self.project_ledger:
+                self.project_ledger.record_decision(
+                    iteration=self.iteration_count,
+                    agent=agent_id,
+                    decision_type="task_completion",
+                    description=task.description,
+                    rationale=f"Task {task.type} completed",
+                    outcome="success" if not task.error else "failure"
+                )
+
+        # Check if task triggered any dependent tasks
+        # This would be where we implement task dependency management
+        pass
+
+    def route_message(self, message: Dict):
+        """
+        Route inter-agent messages.
+
+        Args:
+            message: Message dict with 'from', 'to', 'type', 'content', 'timestamp'
+        """
+        recipient_id = message.get("to")
+        sender_id = message.get("from")
+
+        logger.debug(f"Routing message from {sender_id} to {recipient_id}")
+
+        # Find the recipient agent
+        recipient_agent = None
+        for agent_name, agent in self.agents.items():
+            if agent.id == recipient_id or agent_name == recipient_id:
+                recipient_agent = agent
+                break
+
+        if recipient_agent:
+            # Deliver message to agent
+            # For now, agents don't have a message inbox, so we log it
+            logger.info(f"Message delivered to {recipient_id}: {message.get('type')}")
+            # TODO: Implement actual message delivery when agents support it
+        else:
+            logger.warning(f"Could not route message - recipient {recipient_id} not found")
 
 # GEMINI-EDIT - 2025-11-18 - Added main execution block to allow the director to be run directly.
 if __name__ == "__main__":
