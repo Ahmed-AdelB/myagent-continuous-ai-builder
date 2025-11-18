@@ -484,8 +484,41 @@ class ContinuousDirector:
         # Default to coder agent
         return "coder"
 
-    # Placeholder methods - to be implemented
-    async def _load_project_state(self): pass
+    # State management methods
+    async def _load_project_state(self):
+        """Load project state from the latest checkpoint"""
+        logger.info("Loading project state from checkpoint...")
+
+        checkpoint_dir = Path("persistence/snapshots")
+        if not checkpoint_dir.exists():
+            logger.warning("No checkpoints directory found")
+            return
+
+        # Find latest checkpoint
+        checkpoint_files = list(checkpoint_dir.glob(f"checkpoint_*.json"))
+        if not checkpoint_files:
+            logger.warning("No checkpoint files found")
+            return
+
+        latest = max(checkpoint_files, key=lambda p: p.stat().st_mtime)
+
+        try:
+            with open(latest, 'r') as f:
+                checkpoint_data = json.load(f)
+
+            # Restore state
+            self.iteration_count = checkpoint_data.get("iteration", 0)
+            self.state = ProjectState(checkpoint_data.get("state", "initializing"))
+
+            # Restore metrics
+            metrics_data = checkpoint_data.get("metrics", {})
+            if metrics_data:
+                self.metrics = QualityMetrics(**metrics_data)
+
+            logger.info(f"Loaded state from checkpoint: iteration {self.iteration_count}")
+
+        except Exception as e:
+            logger.error(f"Failed to load checkpoint: {e}")
     # GEMINI-EDIT - 2025-11-18 - Implemented the _run_tests method to integrate with the Tester Agent.
     async def _run_tests(self) -> Dict:
         """Run the test suite using the TesterAgent and update metrics."""
@@ -647,8 +680,67 @@ class ContinuousDirector:
 
         except Exception as e:
             logger.error(f"An exception occurred during the debugging phase: {e}")
-    async def _optimize_performance(self): pass
-    async def _validate_quality(self): pass
+
+    async def _optimize_performance(self):
+        """Optimize system performance based on metrics"""
+        logger.info("Executing performance optimization phase...")
+        self.state = ProjectState.OPTIMIZING
+
+        # Check current performance score
+        if self.metrics.performance_score >= 90:
+            logger.info(f"Performance score {self.metrics.performance_score} already meets target")
+            return
+
+        # Generate performance optimization tasks
+        if "coder" in self.agents:
+            optimization_task = DevelopmentTask(
+                id=f"performance-opt-{self.iteration_count}",
+                type="optimize_code",
+                description="Optimize performance bottlenecks",
+                priority=5,
+                data={
+                    "current_score": self.metrics.performance_score,
+                    "target_score": 90,
+                    "focus_areas": ["database_queries", "algorithm_efficiency", "caching"]
+                }
+            )
+            self.task_queue.append(optimization_task)
+            logger.info("Created performance optimization task")
+
+    async def _validate_quality(self):
+        """Validate overall quality against targets"""
+        logger.info("Executing quality validation phase...")
+        self.state = ProjectState.VALIDATING
+
+        validation_results = {
+            "test_coverage": self.metrics.test_coverage >= 95,
+            "performance": self.metrics.performance_score >= 90,
+            "security": self.metrics.security_score >= 95,
+            "critical_bugs": self.metrics.critical_bugs == 0,
+            "documentation": self.metrics.documentation_coverage >= 90
+        }
+
+        passed = all(validation_results.values())
+
+        if passed:
+            logger.success("✓ All quality gates passed!")
+        else:
+            failed_gates = [k for k, v in validation_results.items() if not v]
+            logger.warning(f"Quality gates failed: {', '.join(failed_gates)}")
+
+            # Generate tasks to address failed gates
+            for gate in failed_gates:
+                if gate == "test_coverage" and "tester" in self.agents:
+                    task = DevelopmentTask(
+                        id=f"improve-coverage-{self.iteration_count}",
+                        type="generate_tests",
+                        description="Improve test coverage",
+                        priority=2,
+                        data={"target_coverage": 95}
+                    )
+                    self.task_queue.append(task)
+
+        return validation_results
     # GEMINI-EDIT - 2025-11-18 - Implemented the _analyze_current_state method to integrate with the Analyzer Agent.
     async def _analyze_current_state(self) -> Dict:
         """
@@ -697,7 +789,35 @@ class ContinuousDirector:
         except Exception as e:
             logger.error(f"An exception occurred during the analysis phase: {e}")
             return {"summary": f"Exception during analysis: {e}"}
-    async def _recover_from_error(self, error): pass
+
+    async def _recover_from_error(self, error):
+        """Attempt to recover from an error"""
+        logger.error(f"Attempting error recovery: {error}")
+
+        # Save current state
+        await self._create_checkpoint()
+
+        # Analyze error severity
+        is_critical = isinstance(error, (SystemExit, KeyboardInterrupt))
+
+        if is_critical:
+            logger.critical("Critical error encountered - initiating graceful shutdown")
+            await self._cleanup()
+            self.stop_requested = True
+            return
+
+        # Try to load last known good state
+        try:
+            await self._load_project_state()
+            self.state = ProjectState.PLANNING
+            logger.info("Successfully recovered from error - restored to planning state")
+
+        except Exception as recovery_error:
+            logger.critical(f"Recovery failed: {recovery_error}")
+            # Last resort: reset to initial state
+            self.state = ProjectState.INITIALIZING
+            self.iteration_count = 0
+            logger.warning("Fallback: Reset to initial state")
     async def _cleanup(self): pass
     async def _analyze_successes(self) -> List: return []
     async def _analyze_failures(self) -> List: return []
