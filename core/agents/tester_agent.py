@@ -140,43 +140,81 @@ class Test{component_name}Performance:
             raise ValueError(f"Unknown task type for Tester: {task_type}")
     
     async def generate_tests(self, data: Dict) -> Dict:
-        """Generate tests for code"""
-        code = data.get('code', '')
-        test_type = data.get('test_type', 'unit')
-        component_name = data.get('component_name', 'Component')
+        """
+        Generates meaningful tests for a given file using an AI model.
+        """
+        # GEMINI-EDIT - 2025-11-18 - Replaced template-based test generation with an AI-driven approach.
+        logger.info("Starting AI-driven test generation...")
         
-        # Analyze code to understand what to test
-        code_analysis = self._analyze_code_for_testing(code)
+        file_path = data.get('file_path')
+        if not file_path:
+            raise ValueError("`file_path` must be provided in the task data for test generation.")
+
+        try:
+            # A more advanced agent would have access to tools. For now, we assume it can read files.
+            with open(file_path, 'r') as f:
+                source_code = f.read()
+        except FileNotFoundError:
+            logger.error(f"File not found for test generation: {file_path}")
+            return {'success': False, 'error': f"File not found: {file_path}"}
         
-        # Generate test methods
-        test_methods = []
-        for func in code_analysis['functions']:
-            test_method = self._generate_test_method(func)
-            test_methods.append(test_method)
-        
-        # Fill template
-        template = self.test_templates[test_type]
-        test_code = template.format(
-            class_name=component_name,
-            feature_name=component_name,
-            component_name=component_name,
-            setup_code=self._generate_setup_code(code_analysis),
-            test_methods='\n\n'.join(test_methods),
-            teardown_code=self._generate_teardown_code(code_analysis),
-            iterations=10,
-            max_time=1.0,
-            test_code=f"# Test {component_name}",
-            memory_test_code=f"# Memory test for {component_name}"
+        # Create a new, more intelligent prompt template for the LLM
+        system_message = SystemMessagePromptTemplate.from_template(
+            """You are an expert Senior Software Engineer in Test. Your task is to write a comprehensive suite of `pytest` tests for the provided Python code.
+
+            Follow these principles:
+            1.  **Thoroughness:** Cover happy paths, edge cases (e.g., None, empty inputs, zeros), and error conditions.
+            2.  **Clarity:** Write clean, readable tests with clear `assert` statements.
+            3.  **Independence:** Tests should be independent and not rely on the state of previous tests.
+            4.  **Best Practices:** Use `pytest` features like fixtures for setup, `pytest.raises` for expected exceptions, and `mocker` (from `pytest-mock`) for patching dependencies.
+            5.  **Meaningful Assertions:** Do not use `assert True` or `assert result is not None` unless it is the only possible check. Assert on specific expected values.
+            
+            Your output must be a single, complete Python code block containing the full test file, including all necessary imports."""
         )
         
-        self.test_metrics['tests_generated'] += len(test_methods)
+        human_message = HumanMessagePromptTemplate.from_template(
+            """Please generate a `pytest` test suite for the following code from the file `{file_path}`:
+
+            ```python
+            {source_code}
+            ```
+
+            Generate a complete test file.
+            """
+        )
+        
+        test_gen_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
+        
+        # Generate the test code
+        # Assuming self.llm and self.code_parser are available from the base class
+        response = await self.llm.apredict(test_gen_prompt.format(
+            file_path=file_path,
+            source_code=source_code
+        ))
+        
+        parsed = self.code_parser.parse(response)
+        
+        if not parsed['code_blocks']:
+            logger.error("AI failed to generate any test code.")
+            return {'success': False, 'error': 'AI produced no code.'}
+            
+        # We expect the LLM to produce a single, complete test file
+        test_code = parsed['code_blocks'][0]['code']
+        
+        # Basic validation
+        try:
+            ast.parse(test_code)
+        except SyntaxError as e:
+            logger.error(f"AI generated invalid Python code for tests: {e}")
+            return {'success': False, 'error': f"Generated code has syntax errors: {e}", 'generated_code': test_code}
+
+        self.test_metrics['tests_generated'] += test_code.count("def test_")
         
         return {
             'success': True,
             'test_code': test_code,
-            'test_count': len(test_methods),
-            'test_type': test_type,
-            'coverage_targets': code_analysis
+            'test_file_name': f"test_{Path(file_path).name}",
+            'explanation': parsed['explanation']
         }
     
     async def execute_tests(self, data: Dict) -> Dict:

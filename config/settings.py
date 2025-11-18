@@ -39,6 +39,18 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
     REDIS_MAX_CONNECTIONS: int = Field(default=50, env="REDIS_MAX_CONNECTIONS")
 
+    @validator("DATABASE_URL", pre=True, always=True)
+    def build_database_url(cls, v, values):
+        """NOTE: Compose DATABASE_URL from POSTGRES_* when explicit URL is missing (Codex)."""
+        if v:
+            return v
+        host = os.getenv("POSTGRES_HOST", "localhost")
+        port = os.getenv("POSTGRES_PORT", "5432")
+        user = os.getenv("POSTGRES_USER", "myagent")
+        password = os.getenv("POSTGRES_PASSWORD", "myagent_password")
+        db = os.getenv("POSTGRES_DB", "myagent_db")
+        return f"postgresql://{user}:{password}@{host}:{port}/{db}"
+
     # ChromaDB Configuration
     CHROMADB_HOST: str = Field(default="localhost", env="CHROMADB_HOST")
     CHROMADB_PORT: int = Field(default=8000, env="CHROMADB_PORT")

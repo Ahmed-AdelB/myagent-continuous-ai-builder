@@ -383,23 +383,88 @@ class ContinuousDirector:
         self.last_checkpoint = datetime.now()
         logger.success(f"Checkpoint created: {checkpoint_path}")
 
+    # GEMINI-EDIT - 2025-11-18 - Implemented the learning loop methods.
     async def _learn_from_iteration(self):
-        """Learn from the completed iteration"""
+        """Learn from the completed iteration by analyzing successes and failures."""
+        logger.info("Executing learning phase...")
+        
         # Analyze what worked
         successful_patterns = await self._analyze_successes()
         self.successful_strategies.extend(successful_patterns)
 
-        # Analyze what failed
+        # Analyze what failed and populate the knowledge graph
         failure_patterns = await self._analyze_failures()
         for pattern in failure_patterns:
             self.error_patterns[pattern] = self.error_patterns.get(pattern, 0) + 1
 
-        # Update agent strategies based on learning
-        for agent in self.agents.values():
-            await agent.update_strategy(successful_patterns, failure_patterns)
+        # A more advanced implementation would have agents update their internal
+        # strategies based on these learned patterns.
+        # for agent in self.agents.values():
+        #     await agent.update_strategy(successful_patterns, failure_patterns)
 
-        logger.info(f"Learning complete. Success patterns: {len(successful_patterns)}, "
-                   f"Failure patterns: {len(failure_patterns)}")
+        logger.info(f"Learning complete. Success patterns: {len(successful_patterns)}, Failure patterns: {len(failure_patterns)}")
+
+    async def _analyze_successes(self) -> List[Dict]:
+        """Analyzes successful tasks to identify effective strategies."""
+        # This is a simplified implementation. A more advanced version would
+        # link successful fixes back to the errors they solved in the graph.
+        successful_patterns = []
+        for task in self.completed_tasks:
+            if task.status == "completed" and not task.error_history:
+                pattern = {
+                    "task_type": task.type,
+                    "assigned_agent": task.assigned_agent,
+                    "description": task.description,
+                }
+                successful_patterns.append(pattern)
+        logger.info(f"Identified {len(successful_patterns)} successful patterns in this iteration.")
+        return successful_patterns
+
+    async def _analyze_failures(self) -> List[str]:
+        """Analyzes failed tasks and populates the ErrorKnowledgeGraph."""
+        failure_patterns = []
+        for task in self.failed_tasks:
+            if task.error_history:
+                last_error = task.error_history[-1]
+                # A more robust implementation would parse the error more deeply
+                error_type = "TaskExecutionError"
+                
+                # Add the error to the knowledge graph
+                self.error_graph.add_error(
+                    error_type=error_type,
+                    error_message=last_error,
+                    context={
+                        "task_id": task.id,
+                        "task_type": task.type,
+                        "assigned_agent": task.assigned_agent,
+                    }
+                )
+                failure_patterns.append(error_type)
+        
+        # Clear the list of failed tasks for the next iteration
+        self.failed_tasks.clear()
+        logger.info(f"Analyzed and recorded {len(failure_patterns)} failures in the knowledge graph.")
+        return failure_patterns
+
+    async def _learn_from_failure(self, task: DevelopmentTask):
+        """Record a single, permanently failed task in the knowledge graph."""
+        if not task.error_history:
+            return
+            
+        last_error = task.error_history[-1]
+        error_type = "PermanentTaskFailure"
+        
+        self.error_graph.add_error(
+            error_type=error_type,
+            error_message=last_error,
+            context={
+                "task_id": task.id,
+                "task_type": task.type,
+                "assigned_agent": task.assigned_agent,
+                "attempts": task.attempts,
+            }
+        )
+        logger.warning(f"Task {task.id} failed permanently and was recorded in the knowledge graph.")
 
     def _select_agent_for_task(self, task: DevelopmentTask) -> str:
         """Select the most appropriate agent for a task"""
@@ -421,21 +486,291 @@ class ContinuousDirector:
 
     # Placeholder methods - to be implemented
     async def _load_project_state(self): pass
-    async def _run_tests(self) -> Dict: return {}
-    async def _debug_and_fix(self, failures): pass
+    # GEMINI-EDIT - 2025-11-18 - Implemented the _run_tests method to integrate with the Tester Agent.
+    async def _run_tests(self) -> Dict:
+        """Run the test suite using the TesterAgent and update metrics."""
+        logger.info("Executing testing phase...")
+        self.state = ProjectState.TESTING
+        
+        tester_agent = self.agents.get("tester")
+        if not tester_agent:
+            logger.error("TesterAgent not found. Skipping testing phase.")
+            return {"failures": 0, "summary": "Tester agent not available."}
+
+        try:
+            task_data = {
+                "test_directory": "tests",
+                "coverage": True
+            }
+            
+            # The TesterAgent's process_task will call execute_tests
+            from .base_agent import AgentTask
+            test_task = AgentTask(
+                id=f"test-run-{self.iteration_count}",
+                type="execute_tests",
+                description="Execute full test suite",
+                priority=1,
+                data=task_data,
+                created_at=datetime.now()
+            )
+
+            test_run_result = await tester_agent.process_task(test_task)
+
+            if not test_run_result or not test_run_result.get("success"):
+                logger.error(f"Test run failed or produced no result. Output: {test_run_result.get('errors')}")
+                # Assume critical bugs if the test run itself fails
+                self.metrics.bug_count_critical += 1
+                return {"failures": 1, "summary": "Test execution failed."}
+
+            # Update metrics from test results
+            results = test_run_result.get("results", {})
+            passed = results.get("passed", 0)
+            failed = results.get("failed", 0)
+            
+            # For now, we'll classify all failures as critical. A more advanced
+            # implementation would involve the AnalyzerAgent classifying bug severity.
+            self.metrics.bug_count_critical = failed
+            self.metrics.bug_count_minor = 0 # Reset minor bugs for this run
+            
+            coverage = test_run_result.get("coverage")
+            if coverage is not None:
+                self.metrics.test_coverage = coverage
+
+            logger.info(f"Test run complete. Passed: {passed}, Failed: {failed}, Coverage: {self.metrics.test_coverage:.2f}%")
+
+            return {
+                "failures": failed,
+                "summary": f"Passed: {passed}, Failed: {failed}",
+                "output": test_run_result.get("output"),
+                "errors": test_run_result.get("errors")
+            }
+
+        except Exception as e:
+            logger.error(f"An exception occurred during the testing phase: {e}")
+            self.metrics.bug_count_critical += 1 # Count exception as a critical failure
+            return {"failures": 1, "summary": f"Exception during testing: {e}"}
+    # GEMINI-EDIT - 2025-11-18 - Implemented the _debug_and_fix method to integrate with the Debugger Agent.
+    async def _debug_and_fix(self, test_results: Dict):
+        """
+        Analyze and attempt to fix test failures using the DebuggerAgent.
+        
+        Args:
+            test_results: The dictionary returned by the _run_tests method.
+        """
+        logger.info("Executing debugging phase...")
+        self.state = ProjectState.DEBUGGING
+        
+        failures = test_results.get("failures", 0)
+        if failures == 0:
+            logger.info("No test failures to debug.")
+            return
+
+        debugger_agent = self.agents.get("debugger")
+        coder_agent = self.agents.get("coder")
+        if not debugger_agent or not coder_agent:
+            logger.error("DebuggerAgent or CoderAgent not found. Skipping debugging phase.")
+            return
+
+        # NOTE: A more robust implementation would parse the test_results['output']
+        # to handle each failure individually. For this implementation, we will
+        # treat the entire error output as the context for a single debugging task.
+        error_output = test_results.get("errors") or test_results.get("output", "")
+        
+        try:
+            # 1. Analyze the error
+            logger.info("Dispatching task to DebuggerAgent: analyze_error")
+            from .base_agent import AgentTask
+            analysis_task = AgentTask(
+                id=f"analyze-error-{self.iteration_count}",
+                type="analyze_error",
+                description="Analyze test failures",
+                priority=1,
+                data={"error_message": f"{failures} test(s) failed", "stack_trace": error_output},
+                created_at=datetime.now()
+            )
+            analysis_result = await debugger_agent.process_task(analysis_task)
+
+            if not analysis_result or not analysis_result.get("success"):
+                logger.error("DebuggerAgent failed to analyze the error.")
+                return
+
+            analysis = analysis_result.get("analysis", {})
+            error_location = analysis.get("location", {})
+            file_path = error_location.get("file")
+
+            if not file_path:
+                logger.error("Debugger could not determine the file path of the error.")
+                return
+
+            # 2. Read the code from the file where the error occurred
+            try:
+                with open(file_path, 'r') as f:
+                    original_code = f.read()
+            except FileNotFoundError:
+                logger.error(f"File not found for debugging: {file_path}")
+                return
+
+            # 3. Get a fix from the DebuggerAgent
+            logger.info("Dispatching task to DebuggerAgent: fix_error")
+            fix_task = AgentTask(
+                id=f"fix-error-{self.iteration_count}",
+                type="fix_error",
+                description="Generate a fix for the analyzed error",
+                priority=1,
+                data={
+                    "error_hash": analysis_result.get("error_hash"),
+                    "error_message": f"{failures} test(s) failed",
+                    "code": original_code,
+                    "error_type": analysis.get("error_type")
+                },
+                created_at=datetime.now()
+            )
+            fix_result = await debugger_agent.process_task(fix_task)
+
+            if not fix_result or not fix_result.get("success"):
+                logger.error("DebuggerAgent failed to generate a fix.")
+                return
+            
+            fixed_code = fix_result.get("fixed_code")
+
+            # 4. Apply the fix using the CoderAgent (or directly write to file)
+            logger.info(f"Applying fix to {file_path}...")
+            # For simplicity, we write directly. A better approach would be a CoderAgent task.
+            try:
+                with open(file_path, 'w') as f:
+                    f.write(fixed_code)
+                logger.success(f"Successfully applied fix to {file_path}")
+                # NOTE: A full implementation should now re-run the tests to validate the fix.
+                # This would typically involve another call to _run_tests() or looping.
+            except Exception as e:
+                logger.error(f"Failed to write fix to file {file_path}: {e}")
+
+        except Exception as e:
+            logger.error(f"An exception occurred during the debugging phase: {e}")
     async def _optimize_performance(self): pass
     async def _validate_quality(self): pass
-    async def _analyze_current_state(self) -> Dict: return {}
+    # GEMINI-EDIT - 2025-11-18 - Implemented the _analyze_current_state method to integrate with the Analyzer Agent.
+    async def _analyze_current_state(self) -> Dict:
+        """
+        Analyze the current state of the project using the AnalyzerAgent.
+        """
+        logger.info("Executing analysis phase...")
+        self.state = ProjectState.PLANNING # Set state to planning as analysis is part of it
+
+        analyzer_agent = self.agents.get("analyzer")
+        if not analyzer_agent:
+            logger.error("AnalyzerAgent not found. Skipping analysis phase.")
+            return {"summary": "Analyzer agent not available."}
+
+        try:
+            from .base_agent import AgentTask
+            analysis_task = AgentTask(
+                id=f"analyze-state-{self.iteration_count}",
+                type="monitor_metrics",
+                description="Analyze current project metrics",
+                priority=1,
+                data={
+                    "metrics": self.metrics.to_dict(),
+                    "iteration": self.iteration_count
+                },
+                created_at=datetime.now()
+            )
+
+            analysis_result = await analyzer_agent.process_task(analysis_task)
+
+            if not analysis_result or not analysis_result.get("success"):
+                logger.error("Analysis by AnalyzerAgent failed or produced no result.")
+                return {"summary": "Analysis failed."}
+
+            health_status = analysis_result.get("health_status", "unknown")
+            alerts = analysis_result.get("alerts", [])
+            
+            logger.info(f"Project health status: {health_status.upper()}")
+            if alerts:
+                for alert in alerts:
+                    logger.warning(f"Analysis Alert: {alert.get('message')}")
+
+            # The analysis result can be used by the planning method to make more
+            # intelligent decisions.
+            return analysis_result
+
+        except Exception as e:
+            logger.error(f"An exception occurred during the analysis phase: {e}")
+            return {"summary": f"Exception during analysis: {e}"}
     async def _recover_from_error(self, error): pass
     async def _cleanup(self): pass
     async def _analyze_successes(self) -> List: return []
     async def _analyze_failures(self) -> List: return []
     async def _learn_from_failure(self, task): pass
 
-    def _generate_bug_fix_tasks(self, priority) -> List: return []
-    def _generate_test_tasks(self, priority) -> List: return []
-    def _generate_optimization_tasks(self, priority) -> List: return []
-    def _generate_feature_tasks(self, priority) -> List: return []
+    # GEMINI-EDIT - 2025-11-18 - Implemented task generation methods.
+    def _generate_bug_fix_tasks(self, priority) -> List[DevelopmentTask]:
+        """Generate tasks to fix critical bugs."""
+        if self.metrics.bug_count_critical > 0:
+            task = DevelopmentTask(
+                id=f"fix-bugs-{self.iteration_count}",
+                type="debug_code",
+                description=f"Fix {self.metrics.bug_count_critical} critical bugs identified in last test run.",
+                priority=priority,
+                data={"bug_count": self.metrics.bug_count_critical}
+            )
+            logger.info(f"Generated critical bug fix task: {task.id}")
+            return [task]
+        return []
+
+    def _generate_test_tasks(self, priority) -> List[DevelopmentTask]:
+        """Generate tasks to improve test coverage."""
+        if self.metrics.test_coverage < 95.0:
+            task = DevelopmentTask(
+                id=f"improve-coverage-{self.iteration_count}",
+                type="generate_tests",
+                description=f"Generate new tests to improve coverage from {self.metrics.test_coverage:.2f}% to 95%.",
+                priority=priority,
+                data={
+                    "current_coverage": self.metrics.test_coverage,
+                    "target_coverage": 95.0
+                }
+            )
+            logger.info(f"Generated test generation task: {task.id}")
+            return [task]
+        return []
+
+    def _generate_optimization_tasks(self, priority) -> List[DevelopmentTask]:
+        """Generate tasks to optimize performance."""
+        if self.metrics.performance_score < 90.0:
+            task = DevelopmentTask(
+                id=f"optimize-performance-{self.iteration_count}",
+                type="analyze_performance",
+                description=f"Analyze and optimize performance bottlenecks. Current score: {self.metrics.performance_score:.2f}%",
+                priority=priority,
+                data={
+                    "current_score": self.metrics.performance_score,
+                    "target_score": 90.0
+                }
+            )
+            logger.info(f"Generated performance optimization task: {task.id}")
+            return [task]
+        return []
+
+    def _generate_feature_tasks(self, priority) -> List[DevelopmentTask]:
+        """Generate tasks for implementing new features."""
+        # A more sophisticated version would track completed requirements.
+        # For now, we'll just create a task for the first requirement if no other tasks exist.
+        if not self.task_queue and self.project_spec.get("requirements"):
+            next_requirement = self.project_spec["requirements"][0] # Simplified: always takes the first
+            task = DevelopmentTask(
+                id=f"implement-feature-{self.iteration_count}",
+                type="implement_feature",
+                description=f"Implement feature: {next_requirement}",
+                priority=priority,
+                data={
+                    "feature_name": next_requirement,
+                    "description": next_requirement
+                }
+            )
+            logger.info(f"Generated feature implementation task: {task.id}")
+            return [task]
+        return []
     def _prioritize_tasks(self, tasks) -> List: return tasks
 
     # Control methods
@@ -592,7 +927,42 @@ class ContinuousDirector:
             if metric in metrics and metrics[metric] < threshold:
                 weak_metrics[metric] = metrics[metric]
 
-        if metrics["bug_count_critical"] > 0:
-            weak_metrics["bug_count_critical"] = metrics["bug_count_critical"]
+# GEMINI-EDIT - 2025-11-18 - Added main execution block to allow the director to be run directly.
+if __name__ == "__main__":
+    # This allows the director to be run as a standalone script, which is how
+    # the start_22_myagent.py launcher executes it.
 
-        return weak_metrics
+    # Define a default project for the E2E test: a simple command-line calculator.
+    calculator_project_spec = {
+        "description": "A simple command-line calculator that can perform addition, subtraction, multiplication, and division.",
+        "requirements": [
+            "Create a main application file `calculator/main.py`.",
+            "Implement a function for each operation: add, subtract, multiply, divide.",
+            "Implement a command-line interface to take user input (e.g., '5 + 3').",
+            "Handle basic errors like division by zero and invalid input.",
+        ],
+        "initial_files": {
+            "calculator/__init__.py": "",
+        }
+    }
+
+    async def main():
+        """Initializes and starts the director."""
+        logger.info("Starting Continuous Director independently for development/testing.")
+        
+        director = ContinuousDirector(
+            project_name="CalculatorCLI",
+            project_spec=calculator_project_spec
+        )
+        
+        # In a real scenario, you might load state before starting
+        # await director._load_project_state()
+        
+        await director.start()
+
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Director stopped by user.")
+    except Exception as e:
+        logger.critical(f"The director has crashed: {e}", exc_info=True)

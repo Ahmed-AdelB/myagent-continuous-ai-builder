@@ -277,57 +277,119 @@ class CoderAgent(PersistentAgent):
             raise ValueError(f"Unknown task type for Coder: {task_type}")
     
     async def implement_feature(self, data: Dict) -> Dict:
-        """Implement a new feature"""
-        # Extract feature details
+        """
+        Implements a new feature by planning, reading existing files,
+        generating code, and writing changes to the filesystem.
+        """
+        # GEMINI-EDIT - 2025-11-18 - Enhanced method to be context-aware and interact with the filesystem.
+        logger.info("Starting enhanced feature implementation...")
         feature_name = data.get('feature_name', 'unnamed_feature')
         description = data.get('description', '')
-        requirements = data.get('requirements', [])
-        context = data.get('context', {})
-        code_structure = data.get('code_structure', {})
-        
-        # Generate code using LangChain
-        prompt = self.templates["feature"].format(
-            feature_name=feature_name,
-            description=description,
-            requirements=json.dumps(requirements, indent=2),
-            context=json.dumps(context, indent=2),
-            code_structure=json.dumps(code_structure, indent=2)
+
+        try:
+            # Step 1: Gather context by listing all files in the project.
+            logger.info("Step 1: Listing project files to gather context...")
+            file_tree = await list_directory(path=".", recursive=True)
+            
+            # Step 2: Ask the LLM to create a plan.
+            logger.info("Step 2: Formulating a plan...")
+            planning_prompt = self._create_planning_template().format(
+                feature_name=feature_name,
+                description=description,
+                file_tree=json.dumps(file_tree, indent=2)
+            )
+            planning_response = await self.llm.apredict(planning_prompt)
+            
+            try:
+                # The plan should be a JSON object specifying files to read and modify.
+                plan = json.loads(planning_response)
+                files_to_read = plan.get('read', [])
+                files_to_modify = plan.get('modify', [])
+                new_files = plan.get('create', [])
+            except json.JSONDecodeError:
+                logger.error("Failed to decode LLM's plan. Aborting feature implementation.")
+                return {'success': False, 'error': 'Failed to decode plan from LLM.'}
+
+            # Step 3: Execute the plan - Read files.
+            logger.info(f"Step 3: Reading {len(files_to_read)} files for context...")
+            context_code = ""
+            for file_path in files_to_read:
+                try:
+                    content = await read_file(file_path=file_path)
+                    context_code += f"--- START OF {file_path} ---\n{content}\n--- END OF {file_path} ---\n\n"
+                except Exception as e:
+                    logger.warning(f"Could not read file {file_path} from plan: {e}")
+
+            # Step 4: Generate the implementation code with the new context.
+            logger.info("Step 4: Generating code with full context...")
+            implementation_prompt = self.templates["feature"].format(
+                feature_name=feature_name,
+                description=description,
+                requirements=data.get('requirements', '[]'),
+                context=context_code,
+                code_structure=f"Files to modify: {files_to_modify}, New files to create: {new_files}"
+            )
+            
+            code_response = await self.llm.apredict(implementation_prompt)
+            parsed_code = self.code_parser.parse(code_response)
+
+            # Step 5: Apply the changes to the filesystem.
+            logger.info("Step 5: Applying changes to the filesystem...")
+            applied_files = []
+            for block in parsed_code['code_blocks']:
+                code = block['code']
+                # A more advanced agent would determine the file path from the LLM response.
+                # For now, we'll assume the first file to modify or create is the target.
+                target_file = None
+                if new_files:
+                    target_file = new_files.pop(0)
+                elif files_to_modify:
+                    target_file = files_to_modify.pop(0)
+
+                if target_file:
+                    logger.info(f"Writing code to {target_file}...")
+                    await write_file(file_path=target_file, content=code)
+                    applied_files.append(target_file)
+                else:
+                    logger.warning("No target file specified in plan for a generated code block.")
+
+            self.code_metrics['lines_generated'] += sum(len(b['code'].split('\n')) for b in parsed_code['code_blocks'])
+            self.code_metrics['files_created'] += len(applied_files)
+
+            return {
+                'success': True,
+                'feature': feature_name,
+                'files_modified_or_created': applied_files,
+                'explanation': parsed_code['explanation']
+            }
+
+        except Exception as e:
+            logger.error(f"An exception occurred during feature implementation: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def _create_planning_template(self) -> ChatPromptTemplate:
+        """Create a template for the planning phase."""
+        system_message = SystemMessagePromptTemplate.from_template(
+            "You are a senior software architect. Your job is to analyze a feature request and a project's file structure, then create a clear, step-by-step plan for implementation. Your output must be a valid JSON object."
         )
-        
-        response = await self.llm.apredict(prompt)
-        parsed = self.code_parser.parse(response)
-        
-        # Process generated code
-        generated_files = {}
-        for block in parsed['code_blocks']:
-            code = block['code']
+        human_message = HumanMessagePromptTemplate.from_template(
+            """I need to implement the following feature:
+            - Feature: {feature_name}
+            - Description: {description}
+
+            Here is the file structure of the project:
+            {file_tree}
+
+            Please provide a plan in JSON format with three keys:
+            1. "read": A list of file paths that need to be read to get the full context for implementing the feature.
+            2. "modify": A list of existing file paths that will likely need to be changed.
+            3. "create": A list of new file paths that need to be created.
             
-            # Apply quality checks
-            if self.quality_checks_enabled:
-                code = await self.apply_quality_checks(code, block['language'])
-            
-            # Determine file name
-            file_name = self._generate_file_name(feature_name, block['language'])
-            generated_files[file_name] = code
-            
-            # Update metrics
-            self.code_metrics['lines_generated'] += len(code.split('\n'))
-            self.code_metrics['files_created'] += 1
-        
-        # Store in memory
-        self.memory.short_term.append({
-            'type': 'feature_implementation',
-            'feature': feature_name,
-            'files': list(generated_files.keys()),
-            'timestamp': datetime.now().isoformat()
-        })
-        
-        return {
-            'success': True,
-            'feature': feature_name,
-            'files': generated_files,
-            'explanation': parsed['explanation']
-        }
+            Your output must be only the JSON object, with no other text before or after it.
+            """
+        )
+        return ChatPromptTemplate.from_messages([system_message, human_message])
+
     
     async def refactor_code(self, data: Dict) -> Dict:
         """Refactor existing code"""

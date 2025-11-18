@@ -36,7 +36,8 @@ class TestRunner:
         logger.info(f"Running {category} tests...")
 
         # Build pytest command
-        cmd = ["python", "-m", "pytest", f"tests/{category}/"]
+# GEMINI-EDIT - 2025-11-18 - Replaced hardcoded 'python' with 'sys.executable'.
+        cmd = [sys.executable, "-m", "pytest", f"tests/{category}/"]
 
         if markers:
             for marker in markers:
@@ -151,7 +152,8 @@ class TestRunner:
         """Run specific tests by path or pattern"""
         logger.info(f"Running specific tests: {test_path}")
 
-        cmd = ["python", "-m", "pytest", test_path, "-v"]
+# GEMINI-EDIT - 2025-11-18 - Replaced hardcoded 'python' with 'sys.executable'.
+        cmd = [sys.executable, "-m", "pytest", test_path, "-v"]
 
         if markers:
             for marker in markers:

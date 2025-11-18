@@ -150,68 +150,63 @@ echo "Step 7: Initializing database..."
 python3 << 'EOF'
 import asyncpg
 import asyncio
+import os
 
 async def init_db():
     try:
-        conn = await asyncpg.connect('postgresql://localhost:5432/myagent_db')
+        database_url = os.getenv("DATABASE_URL", "postgresql://myagent:myagent_password@localhost:5432/myagent_db")
+        conn = await asyncpg.connect(database_url)
 
-        # Create tables
+        # NOTE: Schema aligned with config/database.py init (Codex).
         await conn.execute('''
             CREATE TABLE IF NOT EXISTS projects (
-                id UUID PRIMARY KEY,
-                name VARCHAR(255),
-                description TEXT,
-                requirements JSONB,
-                target_metrics JSONB,
-                max_iterations INTEGER,
-                created_at TIMESTAMP DEFAULT NOW()
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) UNIQUE NOT NULL,
+                spec JSONB NOT NULL,
+                state VARCHAR(50) NOT NULL DEFAULT 'initializing',
+                metrics JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
 
         await conn.execute('''
-            CREATE TABLE IF NOT EXISTS agents (
-                id UUID PRIMARY KEY,
-                project_id UUID REFERENCES projects(id),
-                name VARCHAR(100),
-                role VARCHAR(100),
-                status VARCHAR(50),
-                metrics JSONB,
-                created_at TIMESTAMP DEFAULT NOW()
+            CREATE TABLE IF NOT EXISTS tasks (
+                id VARCHAR(255) PRIMARY KEY,
+                project_id INTEGER REFERENCES projects(id),
+                type VARCHAR(100) NOT NULL,
+                description TEXT,
+                priority INTEGER,
+                assigned_agent VARCHAR(100),
+                status VARCHAR(50) DEFAULT 'pending',
+                data JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                started_at TIMESTAMP,
+                completed_at TIMESTAMP
             )
         ''')
 
         await conn.execute('''
             CREATE TABLE IF NOT EXISTS iterations (
-                id UUID PRIMARY KEY,
-                project_id UUID REFERENCES projects(id),
-                iteration_number INTEGER,
+                id SERIAL PRIMARY KEY,
+                project_id INTEGER REFERENCES projects(id),
+                iteration_number INTEGER NOT NULL,
+                state VARCHAR(50),
                 metrics JSONB,
-                tasks_completed JSONB,
-                timestamp TIMESTAMP DEFAULT NOW()
+                tasks_completed INTEGER DEFAULT 0,
+                tasks_failed INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
 
         await conn.execute('''
-            CREATE TABLE IF NOT EXISTS errors (
-                id UUID PRIMARY KEY,
-                project_id UUID,
-                error_type VARCHAR(100),
-                error_message TEXT,
-                stack_trace TEXT,
-                solution TEXT,
-                timestamp TIMESTAMP DEFAULT NOW()
-            )
+            CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name)
         ''')
-
         await conn.execute('''
-            CREATE TABLE IF NOT EXISTS milestones (
-                id UUID PRIMARY KEY,
-                project_id UUID,
-                name VARCHAR(255),
-                description TEXT,
-                completed BOOLEAN DEFAULT FALSE,
-                timestamp TIMESTAMP DEFAULT NOW()
-            )
+            CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id)
+        ''')
+        await conn.execute('''
+            CREATE INDEX IF NOT EXISTS idx_iterations_project_id ON iterations(project_id)
         ''')
 
         await conn.close()
@@ -233,9 +228,9 @@ OPENAI_API_KEY=sk-proj-YOUR_KEY_HERE
 ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE
 
 # Database
-POSTGRES_URL=postgresql://localhost:5432/myagent_db
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=
+DATABASE_URL=postgresql://myagent:myagent_password@localhost:5432/myagent_db  # NOTE: Matches settings.py/Codex update
+POSTGRES_USER=myagent
+POSTGRES_PASSWORD=myagent_password
 
 # Redis
 REDIS_URL=redis://localhost:6379

@@ -15,15 +15,11 @@ psutil>=5.9.0
 aiohttp>=3.8.0
 requests>=2.31.0
 
-# Database testing
-asyncpg>=0.28.0
-sqlalchemy>=2.0.0
-alembic>=1.11.0
 
 # UI/Usability testing
 selenium>=4.11.0
 playwright>=1.37.0
-axe-core-python>=4.7.0
+
 
 # Security testing
 bandit>=1.7.0

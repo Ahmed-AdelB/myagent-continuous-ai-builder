@@ -23,6 +23,7 @@ alembic==1.13.1
 psycopg2-binary==2.9.9
 redis==5.0.3
 motor==3.3.2  # MongoDB async driver
+asyncpg==0.29.0  # NOTE: Added to match FastAPI async DB usage (Codex)
 
 # Vector Database
 chromadb>=0.4.24
@@ -30,11 +31,11 @@ pinecone-client>=3.2.1
 weaviate-client>=4.5.4
 
 # Memory & Learning
-numpy==1.26.4
-pandas==2.2.1
-scikit-learn==1.4.2
+numpy
+pandas
+scikit-learn
 networkx==3.2.1  # For knowledge graph
-faiss-cpu==1.8.0  # Facebook AI similarity search
+faiss-cpu  # Facebook AI similarity search
 
 # Task Queue & Background Jobs
 celery[redis]==5.3.6

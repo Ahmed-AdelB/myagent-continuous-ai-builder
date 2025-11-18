@@ -15,6 +15,60 @@ import json
 from .base_agent import PersistentAgent, AgentTask
 
 
+# GEMINI-EDIT - 2025-11-18 - Added langchain imports and LLM initialization.
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain_core.output_parsers import BaseOutputParser
+
+from .base_agent import PersistentAgent, AgentTask
+
+
+class CodeOutputParser(BaseOutputParser[Dict]):
+    """Parser for code generation output"""
+    
+    def parse(self, text: str) -> Dict:
+        """Parse the LLM output into structured code data"""
+        try:
+            # Extract code blocks
+            code_blocks = []
+            lines = text.split('\n')
+            in_code_block = False
+            current_block = []
+            language = None
+            
+            for line in lines:
+                if line.startswith('```'):
+                    if in_code_block:
+                        # End of code block
+                        code_blocks.append({
+                            'language': language,
+                            'code': '\n'.join(current_block)
+                        })
+                        current_block = []
+                        in_code_block = False
+                    else:
+                        # Start of code block
+                        in_code_block = True
+                        language = line[3:].strip() or 'python'
+                elif in_code_block:
+                    current_block.append(line)
+            
+            # Extract explanation
+            explanation_lines = []
+            for line in lines:
+                if not line.startswith('```') and not in_code_block:
+                    explanation_lines.append(line)
+            
+            return {
+                'code_blocks': code_blocks,
+                'explanation': '\n'.join(explanation_lines).strip(),
+                'raw_output': text
+            }
+        except Exception as e:
+            logger.error(f"Failed to parse code output: {e}")
+            return {'code_blocks': [], 'explanation': text, 'raw_output': text}
+
+
 class DebuggerAgent(PersistentAgent):
     """Agent specialized in debugging and error resolution"""
     
@@ -32,6 +86,14 @@ class DebuggerAgent(PersistentAgent):
             ],
             orchestrator=orchestrator
         )
+        
+        # Initialize LangChain components
+        self.llm = ChatOpenAI(
+            model="gpt-4",
+            temperature=0.1, # Lower temperature for more deterministic fixes
+            max_tokens=2500
+        )
+        self.code_parser = CodeOutputParser()
         
         self.error_patterns = self._load_error_patterns()
         self.fix_strategies = self._load_fix_strategies()
@@ -182,63 +244,119 @@ class DebuggerAgent(PersistentAgent):
             'error_hash': error_hash
         }
     
+    # GEMINI-EDIT - 2025-11-18 - Integrated knowledge graph lookup and restored full LLM fallback.
     async def fix_error(self, data: Dict) -> Dict:
-        """Attempt to fix an identified error"""
-        error_hash = data.get('error_hash')
+        """
+        Attempts to fix an error by first consulting the ErrorKnowledgeGraph for known
+        solutions, and falling back to an AI model if no high-confidence fix is found.
+        """
+        logger.info("Attempting to fix error...")
+
         error_message = data.get('error_message', '')
+        stack_trace = data.get('stack_trace', '')
         code = data.get('code', '')
-        error_type = data.get('error_type')
+
+        # 1. Analyze the error to get context
+        analysis_result = await self.analyze_error(data)
+        if not analysis_result.get('success'):
+            return {'success': False, 'error': 'Failed to analyze error before fixing.'}
+        analysis = analysis_result.get('analysis', {})
+        error_type = analysis.get('error_type', 'Unknown')
+
+        # 2. Query the Knowledge Graph for existing solutions
+        if self.orchestrator and hasattr(self.orchestrator, 'error_graph'):
+            logger.debug("Querying error knowledge graph for similar errors...")
+            similar_errors = self.orchestrator.error_graph.find_similar_errors(error_type, error_message)
+            
+            if similar_errors:
+                most_similar_error = similar_errors[0]
+                logger.info(f"Found similar error '{most_similar_error.id}' in knowledge graph. Checking for solutions.")
+                solutions = self.orchestrator.error_graph.get_solutions_for_error(most_similar_error.id)
+                
+                if solutions:
+                    top_solution, effectiveness = solutions[0]
+                    CONFIDENCE_THRESHOLD = 0.8 
+                    if effectiveness >= CONFIDENCE_THRESHOLD:
+                        logger.success(f"Found high-confidence solution (ID: {top_solution.id}, Effectiveness: {effectiveness:.2f}). Applying fix from knowledge graph.")
+                        fixed_code = top_solution.code_changes.get("fixed_code")
+                        if fixed_code:
+                            return {
+                                'success': True,
+                                'original_code': code,
+                                'fixed_code': fixed_code,
+                                'fix_applied': 'KNOWLEDGE_GRAPH_SOLUTION',
+                                'error_type': error_type,
+                                'validation': True,
+                                'explanation': f"Applied a known successful solution (ID: {top_solution.id}) from the error knowledge graph."
+                            }
+                        else:
+                            logger.warning(f"Solution {top_solution.id} did not contain valid 'fixed_code'.")
+
+        # 3. Fallback to AI-driven fixing
+        logger.info("No suitable solution in knowledge graph. Falling back to AI generation.")
         
-        # Check solution cache
-        if error_hash in self.solution_cache:
-            cached_solution = self.solution_cache[error_hash]
-            logger.info(f"Using cached solution for error {error_hash}")
-            return cached_solution
+        system_message = SystemMessagePromptTemplate.from_template(
+            """You are a world-class expert debugger and Python software engineer. Your task is to fix an error in the provided code.
+            Follow these principles:
+            1.  **Understand the Root Cause:** Use the error message, stack trace, and code analysis to understand the fundamental problem.
+            2.  **Minimal, Correct Change:** Apply the most direct and correct fix. Do not refactor unrelated code.
+            3.  **Preserve Functionality:** Ensure your fix does not break other parts of the code.
+            4.  **Maintain Style:** Adhere to the coding style of the original file.
+            Your output must be a single, complete Python code block containing the ENTIRE fixed file content. Do not provide explanations or apologies, only the code."""
+        )
+
+        human_message = HumanMessagePromptTemplate.from_template(
+            """Please fix the error in the following Python code.
+            **Error Analysis:**
+            - Error Type: {error_type}
+            - Location: {location}
+            - Possible Causes: {possible_causes}
+            **Stack Trace:**
+            ```
+            {stack_trace}
+            ```
+            **Original Source Code:**
+            ```python
+            {source_code}
+            ```
+            Provide the complete, corrected code for the entire file."""
+        )
         
-        # Get analysis from cache or re-analyze
-        if error_hash in self.error_cache:
-            analysis = self.error_cache[error_hash]
-        else:
-            analysis_result = await self.analyze_error(data)
-            analysis = analysis_result['analysis']
-            error_type = analysis['error_type']
+        fix_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
+
+        formatted_prompt = fix_prompt.format(
+            error_type=analysis.get('error_type', 'Unknown'),
+            location=analysis.get('location', {}),
+            possible_causes=analysis.get('possible_causes', []),
+            stack_trace=stack_trace,
+            source_code=code
+        )
         
-        # Apply fix strategies
-        fixed_code = code
-        fix_applied = None
-        
-        if error_type in self.fix_strategies:
-            for strategy in self.fix_strategies[error_type]:
-                try:
-                    fixed_code, success = await self._apply_fix_strategy(
-                        strategy,
-                        code,
-                        analysis
-                    )
-                    if success:
-                        fix_applied = strategy
-                        break
-                except Exception as e:
-                    logger.warning(f"Fix strategy {strategy} failed: {e}")
-        
-        # Validate the fix
+        response = await self.llm.apredict(formatted_prompt)
+        parsed = self.code_parser.parse(response)
+
+        if not parsed['code_blocks']:
+            logger.error("AI failed to generate any fixed code.")
+            return {'success': False, 'error': 'AI produced no code.'}
+
+        fixed_code = parsed['code_blocks'][0]['code']
+
         is_valid = await self._validate_code(fixed_code)
-        
-        result = {
+        if is_valid:
+            self.debug_metrics['errors_fixed'] += 1
+            logger.success("AI-generated fix is syntactically valid.")
+        else:
+            logger.error("AI-generated fix has syntax errors.")
+
+        return {
             'success': is_valid,
             'original_code': code,
             'fixed_code': fixed_code,
-            'fix_applied': fix_applied,
-            'error_type': error_type,
+            'fix_applied': 'AI_GENERATED_FIX',
+            'error_type': analysis.get('error_type'),
             'validation': is_valid,
-            'explanation': self._explain_fix(fix_applied, analysis)
+            'explanation': "An AI-generated fix was applied based on the error analysis."
         }
-        
-        if is_valid:
-            self.solution_cache[error_hash] = result
-            self.debug_metrics['errors_fixed'] += 1
-        
-        return result
     
     async def trace_execution(self, data: Dict) -> Dict:
         """Trace code execution to identify issues"""
