@@ -15,7 +15,58 @@ import pytest
 from io import StringIO
 import sys
 
+# LangChain imports for AI-powered test generation
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain_core.output_parsers import BaseOutputParser
+
 from .base_agent import PersistentAgent, AgentTask
+
+
+class CodeOutputParser(BaseOutputParser[Dict]):
+    """Parser for code generation output"""
+
+    def parse(self, text: str) -> Dict:
+        """Parse the LLM output into structured code data"""
+        try:
+            # Extract code blocks
+            code_blocks = []
+            lines = text.split('\n')
+            in_code_block = False
+            current_block = []
+            language = None
+
+            for line in lines:
+                if line.startswith('```'):
+                    if in_code_block:
+                        # End of code block
+                        code_blocks.append({
+                            'language': language,
+                            'code': '\n'.join(current_block)
+                        })
+                        current_block = []
+                        in_code_block = False
+                    else:
+                        # Start of code block
+                        in_code_block = True
+                        language = line[3:].strip() or 'python'
+                elif in_code_block:
+                    current_block.append(line)
+
+            # Extract explanation
+            explanation_lines = []
+            for line in lines:
+                if not line.startswith('```') and not in_code_block:
+                    explanation_lines.append(line)
+
+            return {
+                'code_blocks': code_blocks,
+                'explanation': '\n'.join(explanation_lines).strip(),
+                'raw_output': text
+            }
+        except Exception as e:
+            logger.error(f"Failed to parse code output: {e}")
+            return {'code_blocks': [], 'explanation': text, 'raw_output': text}
 
 
 class TesterAgent(PersistentAgent):
@@ -35,7 +86,16 @@ class TesterAgent(PersistentAgent):
             ],
             orchestrator=orchestrator
         )
-        
+
+        # Initialize LLM for AI-powered test generation
+        self.llm = ChatOpenAI(
+            model="gpt-4",
+            temperature=0.3,
+            max_tokens=2000
+        )
+
+        self.code_parser = CodeOutputParser()
+
         self.test_results = {}
         self.coverage_data = None
         self.test_metrics = {
@@ -46,7 +106,7 @@ class TesterAgent(PersistentAgent):
             "coverage_percentage": 0.0,
             "regression_failures": 0
         }
-        
+
         self.test_templates = {
             "unit": self._create_unit_test_template(),
             "integration": self._create_integration_test_template(),
