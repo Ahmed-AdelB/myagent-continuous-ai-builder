@@ -115,7 +115,30 @@ class PersistentAgent(ABC):
     def generate_solution(self, problem: Dict) -> Dict:
         """Generate solution for a problem - must be implemented by subclasses"""
         pass
-    
+
+    async def initialize(self):
+        """
+        Initialize the agent's resources and perform any setup.
+        Can be overridden by subclasses for custom initialization.
+        Called by orchestrator before agent starts processing tasks.
+        """
+        logger.info(f"Initializing agent {self.name}")
+
+        # Load checkpoint if exists
+        self.load_checkpoint()
+
+        # Perform any subclass-specific initialization
+        await self._custom_init()
+
+        logger.info(f"Agent {self.name} initialized successfully")
+
+    async def _custom_init(self):
+        """
+        Custom initialization hook for subclasses.
+        Override this in subclasses for agent-specific setup.
+        """
+        pass
+
     async def start(self):
         """Start the agent's main loop"""
         logger.info(f"Starting agent {self.name}")
