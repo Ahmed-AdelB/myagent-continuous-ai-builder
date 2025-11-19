@@ -1,20 +1,25 @@
 """
-Gemini CLI Agent - Wrapper for google-gemini CLI using Gemini 2.5 Pro or 3.0 Pro
+Gemini SDK Agent - Wrapper for Google Generative AI SDK using Gemini Pro models
 """
 
 import asyncio
-import subprocess
 import json
 import re
+import os
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 from loguru import logger
 from datetime import datetime
 
+try:
+    import google.generativeai as genai
+except ImportError:
+    raise ImportError("google-generativeai package not installed. Run: pip install google-generativeai")
+
 
 class GeminiCLIAgent:
     """
-    Wraps the `google-gemini` CLI tool for code review and analysis using Gemini 2.5/3.0 Pro.
+    Wraps the Google Generative AI SDK for code review and analysis using Gemini Pro models.
 
     This agent specializes in:
     - Code review and quality assurance
@@ -25,8 +30,9 @@ class GeminiCLIAgent:
 
     def __init__(
         self,
-        model: str = "gemini-2.5-pro",  # or "gemini-3.0-pro"
-        working_dir: Optional[Path] = None
+        model: str = "gemini-1.5-pro",  # Available: gemini-1.5-pro, gemini-1.5-flash
+        working_dir: Optional[Path] = None,
+        api_key: Optional[str] = None
     ):
         self.model = model
         self.working_dir = working_dir or Path.cwd()
@@ -39,27 +45,27 @@ class GeminiCLIAgent:
             "average_response_time": 0.0
         }
 
-        # Verify google-gemini is installed
-        self._verify_gemini_installed()
+        # Configure Gemini SDK
+        self._configure_gemini(api_key)
 
         logger.info(f"Initialized GeminiCLIAgent with model={model}")
 
-    def _verify_gemini_installed(self):
-        """Verify that google-gemini CLI is available"""
+    def _configure_gemini(self, api_key: Optional[str]):
+        """Configure Google Generative AI SDK"""
+        # Get API key from parameter, environment, or .env file
+        key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+        if not key:
+            logger.warning("No Gemini API key found. Set GOOGLE_API_KEY or GEMINI_API_KEY environment variable")
+            # Don't raise error yet - will fail when trying to use the model
+
         try:
-            result = subprocess.run(
-                ["google-gemini", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            logger.info(f"Gemini CLI version: {result.stdout.strip()}")
-        except FileNotFoundError:
-            logger.error("google-gemini CLI not found")
-            logger.info("Install from: https://github.com/google/generative-ai-python")
-            raise RuntimeError("google-gemini CLI not installed")
-        except subprocess.TimeoutExpired:
-            logger.warning("Gemini version check timed out")
+            genai.configure(api_key=key)
+            self.client = genai.GenerativeModel(self.model)
+            logger.info(f"Gemini SDK configured successfully with model={self.model}")
+        except Exception as e:
+            logger.error(f"Failed to configure Gemini SDK: {e}")
+            raise RuntimeError(f"Gemini SDK configuration failed: {e}")
 
     async def review_code(
         self,
@@ -241,41 +247,37 @@ Important:
         return full_prompt
 
     async def _execute_gemini(self, prompt: str, timeout: int) -> str:
-        """Execute google-gemini CLI with the given prompt"""
+        """Execute Gemini API with the given prompt"""
 
-        cmd = [
-            "google-gemini",
-            "generate",
-            "--model", self.model,
-            "--prompt", prompt
-        ]
-
-        logger.debug(f"Executing gemini command with model={self.model}")
-
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=str(self.working_dir)
-        )
+        logger.debug(f"Executing Gemini API with model={self.model}")
 
         try:
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
+            # Run the synchronous Gemini API call in an executor to make it async
+            loop = asyncio.get_event_loop()
+            response = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None,
+                    lambda: self.client.generate_content(
+                        prompt,
+                        generation_config=genai.types.GenerationConfig(
+                            temperature=0.2,  # Lower temperature for more consistent reviews
+                            max_output_tokens=4096,
+                        )
+                    )
+                ),
                 timeout=timeout
             )
+
+            if not response or not response.text:
+                raise RuntimeError("Gemini API returned empty response")
+
+            return response.text
+
         except asyncio.TimeoutError:
-            process.kill()
-            await process.communicate()
             raise TimeoutError(f"Gemini execution exceeded {timeout} seconds")
-
-        stdout_text = stdout.decode('utf-8') if stdout else ""
-        stderr_text = stderr.decode('utf-8') if stderr else ""
-
-        if stderr_text and ("error" in stderr_text.lower() or "failed" in stderr_text.lower()):
-            raise RuntimeError(f"Gemini CLI error: {stderr_text}")
-
-        return stdout_text
+        except Exception as e:
+            logger.error(f"Gemini API error: {e}")
+            raise RuntimeError(f"Gemini API error: {e}")
 
     def _parse_review_result(self, output: str) -> Dict[str, Any]:
         """Parse Gemini's review output"""
