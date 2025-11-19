@@ -16,6 +16,7 @@ class DatabaseManager:
 
     def __init__(self):
         self.pool: Optional[asyncpg.Pool] = None
+        self.transaction_manager: Optional['TransactionManager'] = None
         self._connection_retries = 3
         self._retry_delay = 2  # seconds
 
@@ -41,7 +42,12 @@ class DatabaseManager:
                 async with self.pool.acquire() as conn:
                     await conn.fetchval('SELECT 1')
 
+                # Initialize transaction manager
+                from .transaction_manager import TransactionManager
+                self.transaction_manager = TransactionManager(self.pool)
+
                 logger.success(f"Database connection pool created successfully")
+                logger.info("Transaction manager initialized")
                 return
 
             except Exception as e:
