@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useProject } from '../contexts/ProjectContext';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -27,6 +28,7 @@ ChartJS.register(
 );
 
 const MetricsPanel = () => {
+  const { activeProject } = useProject();
   const [selectedMetric, setSelectedMetric] = useState('performance');
   const [timeRange, setTimeRange] = useState('24h');
   const [metricsData, setMetricsData] = useState({
@@ -39,8 +41,10 @@ const MetricsPanel = () => {
   useEffect(() => {
     // Fetch metrics data
     const fetchMetrics = async () => {
+      if (!activeProject) return;
+
       try {
-        const response = await fetch(`http://localhost:8000/api/metrics?range=${timeRange}`);
+        const response = await fetch(`http://localhost:8000/projects/${activeProject.id}/metrics?range=${timeRange}`);
         const data = await response.json();
         setMetricsData(data);
       } catch (error) {
@@ -48,11 +52,13 @@ const MetricsPanel = () => {
       }
     };
 
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000); // Update every 30 seconds
+    if (activeProject) {
+      fetchMetrics();
+      const interval = setInterval(fetchMetrics, 30000); // Update every 30 seconds
 
-    return () => clearInterval(interval);
-  }, [timeRange]);
+      return () => clearInterval(interval);
+    }
+  }, [timeRange, activeProject]);
 
   const getChartData = () => {
     const data = metricsData[selectedMetric] || [];

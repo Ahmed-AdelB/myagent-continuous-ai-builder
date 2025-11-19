@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useProject } from '../contexts/ProjectContext';
 import { Line, Bar, Scatter, Pie } from 'react-chartjs-2';
 import './ErrorAnalytics.css';
 
 const ErrorAnalytics = () => {
+  const { activeProject } = useProject();
   const [errors, setErrors] = useState([]);
   const [patterns, setPatterns] = useState([]);
   const [selectedError, setSelectedError] = useState(null);
@@ -16,24 +18,49 @@ const ErrorAnalytics = () => {
   });
 
   useEffect(() => {
-    fetchErrorData();
-  }, [timeRange]);
+    if (activeProject) {
+      fetchErrorData();
+    }
+  }, [timeRange, activeProject]);
 
   const fetchErrorData = async () => {
-    try {
-      const [errorsRes, patternsRes, statsRes] = await Promise.all([
-        fetch(`http://localhost:8000/api/errors?range=${timeRange}`),
-        fetch(`http://localhost:8000/api/error-patterns`),
-        fetch(`http://localhost:8000/api/error-stats`)
-      ]);
+    if (!activeProject) return;
 
+    try {
+      // Note: Backend only has /projects/{id}/memory/errors endpoint
+      // error-patterns and error-stats are not implemented yet
+      const errorsRes = await fetch(`http://localhost:8000/projects/${activeProject.id}/memory/errors?range=${timeRange}`);
       const errorsData = await errorsRes.json();
-      const patternsData = await patternsRes.json();
-      const statsData = await statsRes.json();
 
       setErrors(errorsData);
-      setPatterns(patternsData);
-      setErrorStats(statsData);
+
+      // Generate patterns from errors data (since backend endpoint doesn't exist)
+      const patternMap = {};
+      errorsData.forEach(error => {
+        if (patternMap[error.type]) {
+          patternMap[error.type].count++;
+          patternMap[error.type].lastSeen = error.timestamp;
+        } else {
+          patternMap[error.type] = {
+            name: error.type,
+            description: `Recurring ${error.type} errors`,
+            count: 1,
+            lastSeen: error.timestamp,
+            solution: error.solution || 'No solution documented yet'
+          };
+        }
+      });
+      setPatterns(Object.values(patternMap));
+
+      // Calculate stats from errors data (since backend endpoint doesn't exist)
+      const stats = {
+        total: errorsData.length,
+        resolved: errorsData.filter(e => e.status === 'resolved').length,
+        pending: errorsData.filter(e => e.status === 'pending').length,
+        critical: errorsData.filter(e => e.severity === 'critical').length,
+        recurring: errorsData.filter(e => e.count > 1).length
+      };
+      setErrorStats(stats);
     } catch (error) {
       console.error('Failed to fetch error data:', error);
     }

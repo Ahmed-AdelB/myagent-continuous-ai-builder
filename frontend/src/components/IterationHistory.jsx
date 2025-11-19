@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from 'react';
+import { useProject } from '../contexts/ProjectContext';
 import './IterationHistory.css';
 
 const IterationHistory = () => {
+  const { activeProject } = useProject();
   const [iterations, setIterations] = useState([]);
   const [selectedIteration, setSelectedIteration] = useState(null);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchIterations();
-  }, [filter]);
+    if (activeProject) {
+      fetchIterations();
+    }
+  }, [filter, activeProject]);
 
   const fetchIterations = async () => {
+    if (!activeProject) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/iterations?filter=${filter}`);
+      const response = await fetch(`http://localhost:8000/projects/${activeProject.id}/iterations?filter=${filter}`);
       const data = await response.json();
       setIterations(data);
     } catch (error) {
