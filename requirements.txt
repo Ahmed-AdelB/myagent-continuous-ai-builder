@@ -14,6 +14,8 @@ langchain-community>=0.0.34
 # LLM Clients
 openai>=1.23.2
 anthropic>=0.23.1
+google-generativeai>=0.3.0  # Google Gemini API
+langchain-google-genai>=0.0.5  # LangChain Gemini integration
 ollama>=0.1.8
 litellm>=1.35.0
 
