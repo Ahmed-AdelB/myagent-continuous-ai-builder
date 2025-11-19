@@ -60,8 +60,16 @@ error_knowledge_graph.py   # Learns from failures (NetworkX + SQLite)
     ├── add_solution()     # Links solution to error
     └── export_graph()     # Returns dict (not None)
 
-vector_memory.py          # Semantic search (ChromaDB)
-    └── store_memory()    # NOT store_embedding()
+vector_memory.py          # Semantic search (ChromaDB) + Cache Eviction
+    ├── store_memory()    # NOT store_embedding()
+    ├── evict_old_memories()        # Age-based eviction (90 days)
+    ├── evict_by_collection_size()  # Size-based LRU eviction
+    └── auto_evict_all_collections() # Automatic cleanup
+
+cache_eviction.py         # Cache management (NEW)
+    ├── LRU, LFU, TTL, HYBRID policies
+    ├── Max 10k entries, 500 MB limit
+    └── Prevents memory leaks in 24/7 operation
 
 memory_orchestrator.py    # Coordinates all memory systems
 ```
@@ -72,12 +80,11 @@ FastAPI server on port 8000:
 
 ```python
 main.py                   # Main FastAPI application
-    ├── Endpoints use /projects/{id}/* pattern (NOT /api/*)
+    ├── Endpoints use /projects/{id}/* pattern
     ├── WebSocket: /ws/{project_id}
     └── Health check: /health
 
-Critical: Frontend expects /api/* but backend serves /projects/*
-         This is item #13 in COMPREHENSIVE_PLAN.md (pending fix)
+✅ FIXED: Frontend now uses /projects/{id}/* paths via ProjectContext
 ```
 
 ### Frontend (frontend/)
@@ -134,12 +141,36 @@ pytest tests/ -v --cov --cov-report=html
 pytest tests/test_agents/ -v
 pytest tests/test_memory/ -v
 pytest tests/test_orchestrator/ -v
+pytest tests/test_learning/ -v          # NEW: Pattern recognition, RL
+pytest tests/test_persistence/ -v       # NEW: Project ledger, memory orchestrator
+pytest tests/test_recovery/ -v          # NEW: Checkpoints, error recovery
+
+# Run single test file
+pytest tests/test_learning/test_pattern_recognition.py -v
 
 # Run framework validation
 python test_framework_validation.py
 
 # View coverage report
 open htmlcov/index.html
+```
+
+### Database Migrations
+
+```bash
+# Run migrations (Alembic is single source of truth)
+alembic upgrade head
+
+# Check current migration version
+alembic current
+
+# View migration history
+alembic history
+
+# Create new migration
+alembic revision --autogenerate -m "Description"
+
+# See alembic/README.md for complete migration guide
 ```
 
 ### Tri-Agent CLI Tools
@@ -208,10 +239,9 @@ await write_file(file_path, content)
 
 ### Security
 
-**CRITICAL**: `api/auth.py` has eval() calls on lines 170, 217, 235
-- **Never use eval()** - it's a Remote Code Execution vulnerability
-- **Always use json.loads()** for deserializing Redis data
-- This is item #17 in COMPREHENSIVE_PLAN.md (highest priority)
+✅ **FIXED**: `api/auth.py` eval() RCE vulnerability patched
+- All eval() calls replaced with json.loads()
+- Never use eval() - always use json.loads() for deserializing data
 
 ## 📋 Quality Gates (Never Compromise)
 
@@ -269,18 +299,27 @@ while not app.is_perfect():
 
 See `COMPREHENSIVE_PLAN.md` for detailed status.
 
-**Progress**: 14/22 items complete (64%)
+**Progress**: 18/26 items complete (69%)
 
-**Critical Pending**:
-- P3 #17: Fix eval() security vulnerability (HIGHEST PRIORITY)
-- P2 #13: Fix API path mismatches (/api/* vs /projects/*)
-- P3 #19: Complete empty test directories
+**Recently Completed**:
+- ✅ P2 #13: API path mismatches fixed (frontend uses ProjectContext)
+- ✅ P3 #17: eval() RCE vulnerability patched
+- ✅ P3 #19: Test directories filled (1,377 lines of tests)
+- ✅ P2 #15: Schema management unified (Alembic single source of truth)
+- ✅ P2 #16: Cache eviction policies implemented (LRU/LFU/TTL/Hybrid)
 
-**Completed**:
+**Current Work**:
+- 🔄 P3 #18: Add transaction boundaries for database consistency
+- 📋 P3 #20: Frontend component tests (Jest/RTL)
+- 📋 P3 #22: Documentation coverage (docstrings)
+- 📋 Phase 4: Comprehensive test suite validation
+
+**Foundation Complete**:
 - ✅ All 8 P1 critical fixes
 - ✅ Tri-agent SDLC infrastructure
 - ✅ All 6 agents initialized properly
-- ✅ Memory systems integrated
+- ✅ Memory systems with cache eviction
+- ✅ Guardrail system for safe autonomous operation
 
 ## 📁 Persistence Locations
 
@@ -306,13 +345,13 @@ persistence/
 **Cause**: Method signature mismatches
 **Fix**: Check COMPREHENSIVE_PLAN.md items #5, #11 for correct patterns
 
-### Issue: Frontend components not found
-**Cause**: Components were missing
-**Fix**: Now implemented - ProjectManager.jsx, AgentMonitor.jsx, MetricsView.jsx
+### Issue: Memory leaks during long-running operation
+**Cause**: No cache eviction configured
+**Fix**: VectorMemory now includes automatic eviction. Call `auto_evict_all_collections()` periodically
 
-### Issue: API calls fail from frontend
-**Cause**: Path mismatch - frontend uses /api/*, backend serves /projects/*
-**Fix**: Pending (item #13 in plan)
+### Issue: Database schema drift
+**Cause**: Schema defined in multiple places
+**Fix**: ✅ FIXED - Alembic is now single source of truth. Use `alembic upgrade head` instead of raw SQL
 
 ## 🔧 Debugging
 
@@ -336,10 +375,27 @@ sqlite3 persistence/database/*_ledger.db "SELECT * FROM versions ORDER BY timest
 # Orchestration core (the heart of the system)
 core/orchestrator/continuous_director.py:174-295
     # Main loop that never stops
+    # Integrates guardrails and task validation
 
 # Tri-agent collaboration protocol
 core/orchestrator/tri_agent_sdlc.py:68-150
     # SDLC phases with consensus voting
+
+# Guardrails for safe autonomous operation
+core/orchestrator/guardrails.py
+    # Blocks dangerous operations (eval, rm -rf, force push, DROP DATABASE)
+    # Risk assessment: SAFE → CRITICAL
+    # Audit trail for all operations
+
+# Task validation (prevents false completion claims)
+core/orchestrator/task_validator.py
+    # Validates tasks truly complete with proof
+    # File existence, syntax validation, test execution
+
+# Cache eviction (prevents memory leaks)
+core/memory/cache_eviction.py
+    # LRU, LFU, TTL, HYBRID policies
+    # Max 10k entries, 500 MB limit
 
 # Error learning system
 core/memory/error_knowledge_graph.py:207-274
@@ -348,6 +404,11 @@ core/memory/error_knowledge_graph.py:207-274
 # Agent base class
 core/agents/base_agent.py:15-80
     # Foundation for all agents
+
+# Database migrations (single source of truth)
+alembic/versions/0001_init.py
+    # Complete schema definition
+    # See alembic/README.md for workflow
 ```
 
 ## 🚨 Remember
@@ -357,9 +418,13 @@ core/agents/base_agent.py:15-80
 3. **Never forget to await async methods** (except ProjectLedger)
 4. **Always check COMPREHENSIVE_PLAN.md** for current priorities
 5. **Persistence is key** - checkpoint often, recover gracefully
+6. **Memory management** - Call `auto_evict_all_collections()` periodically to prevent leaks
+7. **Database changes** - Use Alembic migrations, not raw SQL in code
+8. **Guardrails active** - Dangerous operations blocked in autonomous mode
 
 ---
 
 *Last Updated: 2025-11-19*
-*Current Phase: Completing comprehensive plan (64% done)*
-*Next Priority: Fix eval() security vulnerability (P3 #17)*
+*Current Phase: Completing comprehensive plan (69% done)*
+*Progress: 18/26 items complete*
+*Next: Transaction boundaries + Frontend tests + Documentation*
