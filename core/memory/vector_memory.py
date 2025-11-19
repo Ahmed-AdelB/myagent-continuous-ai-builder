@@ -4,7 +4,7 @@ Vector Memory - Semantic memory using vector embeddings for context retrieval
 
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 import numpy as np
@@ -14,6 +14,7 @@ from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 import pickle
 from pathlib import Path
+from core.memory.cache_eviction import CacheEvictionManager, EvictionPolicy
 
 
 @dataclass
@@ -68,7 +69,16 @@ class VectorMemory:
             "retrievals": 0,
             "hits": 0
         }
-        
+
+        # Cache eviction manager to prevent memory leaks
+        self.cache_manager = CacheEvictionManager(
+            max_entries=10000,  # Max 10k memories per collection
+            max_size_bytes=500 * 1024 * 1024,  # 500 MB max
+            policy=EvictionPolicy.HYBRID,  # LRU + TTL
+            default_ttl_seconds=3600 * 24 * 30,  # 30 days default
+            eviction_threshold=0.85  # Evict at 85% capacity
+        )
+
         self._load_stats()
     
     def _get_or_create_collection(self, name: str):
@@ -361,21 +371,179 @@ class VectorMemory:
     
     def get_memory_stats(self) -> Dict:
         """Get memory statistics"""
-        
+
         stats = self.stats.copy()
-        
+
         # Add collection-specific stats
         for name, collection in self.collections.items():
             count = collection.count()
             stats[f"{name}_count"] = count
-        
+
         # Calculate hit rate
         if stats["retrievals"] > 0:
             stats["hit_rate"] = stats["hits"] / stats["retrievals"]
         else:
             stats["hit_rate"] = 0
-        
+
+        # Add cache eviction stats
+        cache_stats = self.cache_manager.get_stats()
+        stats["cache_evictions"] = cache_stats["evictions"]
+        stats["cache_size_mb"] = cache_stats["size_mb"]
+        stats["cache_hit_rate"] = cache_stats["hit_rate"]
+
         return stats
+
+    def evict_old_memories(
+        self,
+        memory_type: str,
+        older_than_days: int = 90,
+        keep_high_value: bool = True
+    ) -> int:
+        """
+        Evict old memories to prevent unbounded growth
+
+        Args:
+            memory_type: Type of memory to evict from
+            older_than_days: Evict memories older than this
+            keep_high_value: If True, preserve frequently accessed memories
+
+        Returns:
+            Number of memories evicted
+        """
+        if memory_type not in self.collections:
+            raise ValueError(f"Unknown memory type: {memory_type}")
+
+        collection = self.collections[memory_type]
+        cutoff_date = datetime.now() - timedelta(days=older_than_days)
+
+        # Get all memories
+        all_data = collection.get(include=['metadatas'])
+
+        if not all_data['ids']:
+            return 0
+
+        to_remove = []
+
+        for i, memory_id in enumerate(all_data['ids']):
+            metadata = all_data['metadatas'][i]
+
+            # Parse timestamp
+            try:
+                timestamp_str = metadata.get('timestamp', datetime.now().isoformat())
+                timestamp = datetime.fromisoformat(timestamp_str)
+            except:
+                # If no valid timestamp, assume old
+                timestamp = datetime.min
+
+            # Check age
+            if timestamp < cutoff_date:
+                # If keeping high-value, check access count
+                if keep_high_value:
+                    access_count = metadata.get('access_count', 0)
+                    if access_count > 10:  # Preserve frequently used
+                        continue
+
+                to_remove.append(memory_id)
+
+        # Delete old memories
+        if to_remove:
+            collection.delete(ids=to_remove)
+            logger.info(f"Evicted {len(to_remove)} old memories from {memory_type}")
+
+        return len(to_remove)
+
+    def evict_by_collection_size(
+        self,
+        memory_type: str,
+        max_entries: int = 5000
+    ) -> int:
+        """
+        Evict memories when collection exceeds max size
+
+        Uses LRU policy to remove least recently accessed entries.
+
+        Args:
+            memory_type: Type of memory to evict from
+            max_entries: Maximum entries to keep
+
+        Returns:
+            Number of memories evicted
+        """
+        if memory_type not in self.collections:
+            raise ValueError(f"Unknown memory type: {memory_type}")
+
+        collection = self.collections[memory_type]
+        current_count = collection.count()
+
+        if current_count <= max_entries:
+            return 0
+
+        # Get all memories with metadata
+        all_data = collection.get(include=['metadatas'])
+
+        # Sort by last_accessed (LRU)
+        memory_access = []
+        for i, memory_id in enumerate(all_data['ids']):
+            metadata = all_data['metadatas'][i]
+
+            try:
+                last_accessed_str = metadata.get('last_accessed', metadata.get('timestamp', datetime.min.isoformat()))
+                last_accessed = datetime.fromisoformat(last_accessed_str)
+            except:
+                last_accessed = datetime.min
+
+            memory_access.append((memory_id, last_accessed))
+
+        # Sort by access time (oldest first)
+        memory_access.sort(key=lambda x: x[1])
+
+        # Evict oldest entries
+        to_evict = current_count - max_entries
+        to_remove = [memory_id for memory_id, _ in memory_access[:to_evict]]
+
+        if to_remove:
+            collection.delete(ids=to_remove)
+            logger.info(f"Evicted {len(to_remove)} memories from {memory_type} (LRU policy)")
+
+        return len(to_remove)
+
+    def auto_evict_all_collections(
+        self,
+        max_entries_per_collection: int = 5000,
+        max_age_days: int = 90
+    ) -> Dict[str, int]:
+        """
+        Automatically evict from all collections
+
+        Runs both age-based and size-based eviction.
+
+        Returns:
+            Dict mapping collection name to eviction count
+        """
+        eviction_results = {}
+
+        for memory_type in self.collections.keys():
+            # Age-based eviction
+            age_evicted = self.evict_old_memories(
+                memory_type,
+                older_than_days=max_age_days,
+                keep_high_value=True
+            )
+
+            # Size-based eviction
+            size_evicted = self.evict_by_collection_size(
+                memory_type,
+                max_entries=max_entries_per_collection
+            )
+
+            total_evicted = age_evicted + size_evicted
+            eviction_results[memory_type] = total_evicted
+
+            if total_evicted > 0:
+                logger.info(f"Collection {memory_type}: evicted {total_evicted} memories "
+                           f"({age_evicted} by age, {size_evicted} by size)")
+
+        return eviction_results
     
     def clear_memory_type(self, memory_type: str) -> bool:
         """Clear all memories of a specific type"""
