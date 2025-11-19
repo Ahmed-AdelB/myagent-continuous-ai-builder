@@ -294,6 +294,16 @@ class ContinuousDirector:
             await agent.initialize()
             logger.info(f"Initialized agent: {agent_name}")
 
+        # Initialize Tri-Agent SDLC Orchestrator for critical consensus-based tasks
+        logger.info("Initializing Tri-Agent SDLC system...")
+        from .tri_agent_sdlc import TriAgentSDLCOrchestrator
+
+        self.tri_agent_sdlc = TriAgentSDLCOrchestrator(
+            project_name=self.project_name,
+            working_dir=Path.cwd()
+        )
+        logger.success("Tri-Agent SDLC system initialized (Claude + Codex + Gemini)")
+
     async def _execute_iteration(self):
         """Execute one complete development iteration"""
         self.iteration_count += 1
@@ -357,20 +367,78 @@ class ContinuousDirector:
 
         return tasks
 
+    def _should_use_tri_agent_consensus(self, task: DevelopmentTask) -> bool:
+        """
+        Determine if a task requires tri-agent consensus approval.
+
+        Critical tasks that need 3-agent review:
+        - Security-related changes
+        - Architecture modifications
+        - Production deployments
+        - Frontend component changes
+        - Documentation updates (requires accuracy)
+        - Breaking API changes
+        """
+        consensus_keywords = [
+            "security", "authentication", "authorization",
+            "architecture", "refactor", "breaking",
+            "frontend", "component", "ui", "test",
+            "documentation", "docstring", "readme",
+            "deployment", "production", "release"
+        ]
+
+        task_text = f"{task.type} {task.description}".lower()
+
+        return any(keyword in task_text for keyword in consensus_keywords)
+
+    async def _execute_task_with_tri_agent(self, task: DevelopmentTask) -> Dict[str, Any]:
+        """
+        Execute a task using tri-agent SDLC with consensus voting.
+
+        Returns:
+            Dict with success status and results
+        """
+        logger.info(f"Routing task {task.id} to Tri-Agent SDLC for consensus approval")
+
+        # Convert task to work item for tri-agent system
+        work_item_id = self.tri_agent_sdlc.add_work_item(
+            title=task.description,
+            description=f"Type: {task.type}\nPriority: {task.priority.name}\n\n{task.description}",
+            priority=task.priority.value,
+            file_paths=[],  # Will be determined during requirements phase
+            acceptance_criteria=[]  # Will be inferred by Claude
+        )
+
+        logger.info(f"Created tri-agent work item: {work_item_id}")
+
+        # Process the work item through full SDLC with consensus voting
+        result = await self.tri_agent_sdlc.process_work_item(work_item_id)
+
+        return result
+
     async def _execute_development_tasks(self, tasks: List[DevelopmentTask]):
         """Execute development tasks using agents"""
         for task in tasks:
             try:
-                # Assign task to appropriate agent
-                agent = self._select_agent_for_task(task)
-                task.assigned_agent = agent
                 task.started_at = datetime.now()
                 task.status = "in_progress"
 
-                logger.info(f"Assigning task {task.id} to agent {agent}")
+                # Check if task requires tri-agent consensus
+                if self._should_use_tri_agent_consensus(task):
+                    logger.info(f"Task {task.id} requires tri-agent consensus")
+                    task.assigned_agent = "tri-agent-sdlc"
 
-                # Execute task (agents implement process_task, not execute_task)
-                result = await self.agents[agent].process_task(task)
+                    # Execute via tri-agent SDLC with consensus voting
+                    result = await self._execute_task_with_tri_agent(task)
+                else:
+                    # Regular single-agent execution
+                    agent = self._select_agent_for_task(task)
+                    task.assigned_agent = agent
+
+                    logger.info(f"Assigning task {task.id} to agent {agent}")
+
+                    # Execute task (agents implement process_task, not execute_task)
+                    result = await self.agents[agent].process_task(task)
 
                 # CRITICAL: Validate completion before marking as done
                 validation = await self.task_validator.validate_task_completion(task, result)
