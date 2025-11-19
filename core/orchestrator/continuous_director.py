@@ -5,7 +5,7 @@ This is the brain that coordinates all agents and ensures continuous improvement
 
 import asyncio
 import time
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from enum import Enum
 from dataclasses import dataclass, field
@@ -15,6 +15,9 @@ from pathlib import Path
 
 from pydantic import BaseModel
 from loguru import logger
+
+# Task validator for preventing false completion claims
+from .task_validator import TaskValidator, ValidationResult
 
 # Configure logging
 logger.add("logs/orchestrator.log", rotation="1 day", retention="30 days", level="DEBUG")
@@ -155,6 +158,16 @@ class ContinuousDirector:
         self.pause_requested = False
         self.stop_requested = False
 
+        # Enhanced stopping criteria (prevents premature exit)
+        self.cannot_stop_flag = False  # Set during critical operations
+        self.stagnant_iterations = 0  # Iterations without progress
+        self.last_progress_metrics = None  # For detecting progress
+        self.max_stagnant_iterations = 10  # Stop if no progress for this many
+        self.progress_history: List[Dict] = []  # Track progress velocity
+
+        # Task validator (prevents false completion claims)
+        self.task_validator = TaskValidator(project_root=Path.cwd())
+
         logger.info(f"Initialized ContinuousDirector for project: {project_name}")
 
     async def start(self):
@@ -170,8 +183,14 @@ class ContinuousDirector:
             # Start continuous quality monitor in background
             asyncio.create_task(self.continuous_quality_monitor())
 
-            # Main continuous loop
-            while not self.stop_requested and not self.metrics.is_perfect():
+            # Main continuous loop with enhanced stopping criteria
+            while True:
+                # Check if we can stop safely
+                can_stop, stop_reason = self._can_stop_safely()
+                if can_stop:
+                    logger.info(f"Stopping execution: {stop_reason}")
+                    break
+
                 if self.pause_requested:
                     self.state = ProjectState.PAUSED
                     # REAL EVENT-DRIVEN WAITING - NO FAKE DELAYS IN SAFETY-CRITICAL SYSTEM
@@ -182,6 +201,9 @@ class ContinuousDirector:
 
                 # Execute one development iteration
                 await self._execute_iteration()
+
+                # Track progress after each iteration (detect stagnation)
+                self._track_progress()
 
                 # Check if checkpoint is needed
                 if datetime.now() - self.last_checkpoint > self.checkpoint_interval:
@@ -336,13 +358,44 @@ class ContinuousDirector:
                 # Execute task (agents implement process_task, not execute_task)
                 result = await self.agents[agent].process_task(task)
 
-                # Update task status
-                task.completed_at = datetime.now()
-                task.status = "completed"
-                task.result = result
-                self.completed_tasks.append(task)
+                # CRITICAL: Validate completion before marking as done
+                validation = await self.task_validator.validate_task_completion(task, result)
 
-                logger.success(f"Task {task.id} completed successfully")
+                if validation.can_mark_complete:
+                    # Task genuinely complete with proof
+                    task.completed_at = datetime.now()
+                    task.status = "completed"
+                    task.result = result
+                    self.completed_tasks.append(task)
+
+                    logger.success(
+                        f"Task {task.id} completed and validated successfully. "
+                        f"Checks passed: {', '.join(validation.checks_passed)}"
+                    )
+                else:
+                    # Task claims completion but validation failed
+                    logger.warning(
+                        f"Task {task.id} claimed completion but validation FAILED. "
+                        f"Reasons: {', '.join(validation.failure_reasons)}"
+                    )
+
+                    # Treat as attempt failure, retry if attempts remaining
+                    task.attempts += 1
+                    task.error_history.append(
+                        f"Validation failed: {', '.join(validation.failure_reasons)}"
+                    )
+
+                    if task.attempts < task.max_attempts:
+                        # Retry with validation feedback
+                        logger.info(f"Retrying task {task.id} (attempt {task.attempts}/{task.max_attempts})")
+                        self.task_queue.append(task)
+                    else:
+                        # Max attempts reached, mark as failed
+                        task.status = "failed"
+                        task.result = result
+                        self.failed_tasks.append(task)
+                        logger.error(f"Task {task.id} failed validation after {task.attempts} attempts")
+                        await self._learn_from_failure(task)
 
             except Exception as e:
                 logger.error(f"Task {task.id} failed: {e}")
@@ -908,6 +961,127 @@ class ContinuousDirector:
         """Stop the continuous development"""
         self.stop_requested = True
         logger.info("Stop requested")
+
+    def _can_stop_safely(self) -> Tuple[bool, str]:
+        """
+        Enhanced stopping criteria - prevents premature exit.
+
+        Returns:
+            (can_stop, reason) tuple
+        """
+        # CRITICAL: Cannot stop during critical operations
+        if self.cannot_stop_flag:
+            return False, "Critical operation in progress - cannot stop"
+
+        # Check if user requested stop
+        if self.stop_requested:
+            return True, "User requested stop"
+
+        # Check if perfection achieved
+        if self.metrics.is_perfect():
+            # Additional validation: ensure all tasks actually complete
+            incomplete_tasks = [
+                t for t in self.task_queue
+                if t.status not in ['completed', 'cancelled']
+            ]
+
+            if incomplete_tasks:
+                logger.warning(
+                    f"Metrics show perfection but {len(incomplete_tasks)} tasks incomplete. "
+                    "Continuing execution."
+                )
+                return False, f"{len(incomplete_tasks)} tasks remain incomplete"
+
+            # Verify no critical bugs through validation
+            if self.metrics.bug_count_critical == 0:
+                return True, "All quality metrics achieved and verified"
+
+        # Check for stagnation (no progress)
+        if self.stagnant_iterations >= self.max_stagnant_iterations:
+            logger.error(
+                f"No progress for {self.stagnant_iterations} iterations. "
+                "System may be stuck."
+            )
+            return True, f"Stagnation detected after {self.stagnant_iterations} iterations"
+
+        # Default: keep working
+        return False, "Quality criteria not yet met - continuing work"
+
+    def _track_progress(self):
+        """
+        Track progress to detect stagnation.
+
+        Updates stagnant_iterations counter based on whether meaningful progress occurred.
+        """
+        current_metrics = {
+            'test_coverage': self.metrics.test_coverage,
+            'critical_bugs': self.metrics.bug_count_critical,
+            'performance_score': self.metrics.performance_score,
+            'completed_tasks': len(self.completed_tasks),
+            'failed_tasks': len(self.failed_tasks)
+        }
+
+        # First iteration - just record
+        if self.last_progress_metrics is None:
+            self.last_progress_metrics = current_metrics
+            self.progress_history.append({
+                'iteration': self.iteration_count,
+                'metrics': current_metrics,
+                'progress': True
+            })
+            return
+
+        # Check if any metric improved
+        progress_made = False
+
+        if current_metrics['test_coverage'] > self.last_progress_metrics['test_coverage']:
+            logger.info(
+                f"Test coverage improved: "
+                f"{self.last_progress_metrics['test_coverage']:.1f}% → "
+                f"{current_metrics['test_coverage']:.1f}%"
+            )
+            progress_made = True
+
+        if current_metrics['critical_bugs'] < self.last_progress_metrics['critical_bugs']:
+            logger.info(
+                f"Critical bugs reduced: "
+                f"{self.last_progress_metrics['critical_bugs']} → "
+                f"{current_metrics['critical_bugs']}"
+            )
+            progress_made = True
+
+        if current_metrics['performance_score'] > self.last_progress_metrics['performance_score']:
+            logger.info(
+                f"Performance improved: "
+                f"{self.last_progress_metrics['performance_score']:.1f}% → "
+                f"{current_metrics['performance_score']:.1f}%"
+            )
+            progress_made = True
+
+        if current_metrics['completed_tasks'] > self.last_progress_metrics['completed_tasks']:
+            new_completions = current_metrics['completed_tasks'] - self.last_progress_metrics['completed_tasks']
+            logger.info(f"{new_completions} new task(s) completed")
+            progress_made = True
+
+        # Update stagnation counter
+        if progress_made:
+            self.stagnant_iterations = 0
+        else:
+            self.stagnant_iterations += 1
+            logger.warning(
+                f"No progress in iteration {self.iteration_count}. "
+                f"Stagnant for {self.stagnant_iterations} iterations."
+            )
+
+        # Record in history
+        self.progress_history.append({
+            'iteration': self.iteration_count,
+            'metrics': current_metrics,
+            'progress': progress_made
+        })
+
+        # Update last metrics
+        self.last_progress_metrics = current_metrics
     async def _cleanup(self):
         """Cleanup resources on shutdown"""
         logger.info("Cleaning up resources...")
