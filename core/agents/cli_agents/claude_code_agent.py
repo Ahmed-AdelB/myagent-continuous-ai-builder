@@ -278,10 +278,10 @@ class ClaudeCodeSelfAgent:
         coverage_threshold: float = 85.0
     ) -> Dict[str, Any]:
         """
-        Execute tests using pytest.
+        Execute tests using pytest with coverage.
 
         Args:
-            test_paths: Optional specific test files/directories
+            test_paths: Optional specific test files/directories (defaults to tests/)
             coverage_threshold: Minimum coverage percentage required
 
         Returns:
@@ -291,19 +291,132 @@ class ClaudeCodeSelfAgent:
 
         logger.info("Executing tests with pytest")
 
-        # This is a placeholder - in the actual implementation,
-        # we would use the Bash tool to run pytest
-        # For now, return a success indicator
+        # Build pytest command
+        cmd = ["pytest"]
 
+        # Add test paths
+        if test_paths:
+            cmd.extend(test_paths)
+        else:
+            cmd.append("tests/")  # Default to tests directory
+
+        # Add coverage options
+        cmd.extend([
+            "--cov",  # Enable coverage
+            "--cov-report=json",  # JSON output for parsing
+            "--cov-report=term",  # Terminal output
+            "-v",  # Verbose
+            "--tb=short",  # Short traceback format
+            "--json-report",  # JSON report for detailed results
+            "--json-report-file=test_results.json"
+        ])
+
+        try:
+            # Execute pytest asynchronously
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=str(self.working_dir)
+            )
+
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=300  # 5 minute timeout
+            )
+
+            stdout_text = stdout.decode('utf-8') if stdout else ""
+            stderr_text = stderr.decode('utf-8') if stderr else ""
+
+            # Parse results
+            results = self._parse_pytest_results(stdout_text, process.returncode)
+
+            # Check coverage
+            coverage_data = self._parse_coverage_json()
+            if coverage_data:
+                results["coverage"] = coverage_data.get("totals", {}).get("percent_covered", 0.0)
+                results["coverage_met"] = results["coverage"] >= coverage_threshold
+
+            logger.info(
+                f"Tests complete: {results['tests_passed']}/{results['tests_run']} passed, "
+                f"coverage: {results['coverage']:.1f}%"
+            )
+
+            return results
+
+        except asyncio.TimeoutError:
+            logger.error("Test execution timed out")
+            return {
+                "success": False,
+                "error": "Test execution exceeded 5 minute timeout",
+                "tests_run": 0,
+                "tests_passed": 0,
+                "tests_failed": 0,
+                "coverage": 0.0,
+                "coverage_met": False
+            }
+        except Exception as e:
+            logger.error(f"Test execution failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "tests_run": 0,
+                "tests_passed": 0,
+                "tests_failed": 0,
+                "coverage": 0.0,
+                "coverage_met": False
+            }
+
+    def _parse_pytest_results(self, output: str, returncode: int) -> Dict[str, Any]:
+        """Parse pytest output to extract test results"""
+        import re
+
+        # Try to find test summary line (e.g., "5 passed, 2 failed in 1.23s")
+        summary_pattern = r"(\d+)\s+passed(?:,\s+(\d+)\s+failed)?(?:,\s+(\d+)\s+skipped)?"
+        match = re.search(summary_pattern, output)
+
+        if match:
+            passed = int(match.group(1))
+            failed = int(match.group(2) or 0)
+            skipped = int(match.group(3) or 0)
+            total = passed + failed + skipped
+
+            return {
+                "success": returncode == 0,
+                "tests_run": total,
+                "tests_passed": passed,
+                "tests_failed": failed,
+                "tests_skipped": skipped,
+                "coverage": 0.0,  # Will be updated by coverage parsing
+                "coverage_met": False,
+                "output": output
+            }
+
+        # Fallback if no summary found
         return {
-            "success": True,
+            "success": returncode == 0,
             "tests_run": 0,
             "tests_passed": 0,
             "tests_failed": 0,
+            "tests_skipped": 0,
             "coverage": 0.0,
             "coverage_met": False,
-            "message": "Test execution placeholder - integrate with Bash tool"
+            "output": output
         }
+
+    def _parse_coverage_json(self) -> Optional[Dict[str, Any]]:
+        """Parse coverage.json file if it exists"""
+        import json
+
+        coverage_file = self.working_dir / "coverage.json"
+        if coverage_file.exists():
+            try:
+                with open(coverage_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to parse coverage.json: {e}")
+                return None
+        return None
 
     def read_file(self, file_path: str) -> str:
         """
