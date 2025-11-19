@@ -50,3 +50,9 @@ persistence/vector_memory/chroma.sqlite3
 # Temporary files
 tmp/
 .env
+.aider*
+.ai_context
+.claude_context
+
+# Duplicate directories
+frontend/frontend/
