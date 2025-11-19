@@ -1,5 +1,5 @@
 """
-Aider Codex Agent - Wrapper for aider CLI using GPT-5.1 with max reasoning
+Codex CLI Agent - Wrapper for Anthropic Codex CLI (subscription-based, no API key required)
 """
 
 import asyncio
@@ -14,21 +14,18 @@ from datetime import datetime
 
 class AiderCodexAgent:
     """
-    Wraps the `aider` CLI tool for code generation using GPT-5.1 with maximum reasoning.
+    Wraps the Anthropic `codex` CLI tool for code generation.
 
-    Aider is an AI pair programming tool that can modify multiple files based on instructions.
+    Codex CLI uses subscription-based authentication via `codex login` (no API key required).
+    Supports models: o1, o3, claude-sonnet-4.5, claude-opus-4
     """
 
     def __init__(
         self,
-        model: str = "gpt-5.1",
-        max_reasoning: bool = True,
-        auto_accept: bool = True,
+        model: str = "o1",  # Available: o1, o3, claude-sonnet-4.5, claude-opus-4
         working_dir: Optional[Path] = None
     ):
         self.model = model
-        self.max_reasoning = max_reasoning
-        self.auto_accept = auto_accept
         self.working_dir = working_dir or Path.cwd()
 
         # Track metrics
@@ -40,26 +37,26 @@ class AiderCodexAgent:
             "average_response_time": 0.0
         }
 
-        # Verify aider is installed
-        self._verify_aider_installed()
+        # Verify codex is installed
+        self._verify_codex_installed()
 
-        logger.info(f"Initialized AiderCodexAgent with model={model}, max_reasoning={max_reasoning}")
+        logger.info(f"Initialized Codex CLI Agent with model={model}")
 
-    def _verify_aider_installed(self):
-        """Verify that aider CLI is available"""
+    def _verify_codex_installed(self):
+        """Verify that codex CLI is available"""
         try:
             result = subprocess.run(
-                ["aider", "--version"],
+                ["codex", "--version"],
                 capture_output=True,
                 text=True,
                 timeout=5
             )
-            logger.info(f"Aider version: {result.stdout.strip()}")
+            logger.info(f"Codex CLI version: {result.stdout.strip()}")
         except FileNotFoundError:
-            logger.error("Aider CLI not found. Install with: pip install aider-chat")
-            raise RuntimeError("Aider CLI not installed. Run: pip install aider-chat")
+            logger.error("Codex CLI not found. Visit: https://anthropic.com/codex")
+            raise RuntimeError("Codex CLI not installed. Visit: https://anthropic.com/codex")
         except subprocess.TimeoutExpired:
-            logger.warning("Aider version check timed out")
+            logger.warning("Codex version check timed out")
 
     async def generate_code(
         self,
@@ -69,7 +66,7 @@ class AiderCodexAgent:
         timeout: int = 300
     ) -> Dict[str, Any]:
         """
-        Generate code using aider CLI.
+        Generate code using codex CLI.
 
         Args:
             instruction: Natural language instruction for code generation
@@ -84,13 +81,23 @@ class AiderCodexAgent:
         self.metrics["requests_made"] += 1
 
         try:
-            # Build aider command
-            cmd = self._build_aider_command(instruction, files, context)
+            # Build full instruction with context
+            full_instruction = instruction
+            if context:
+                full_instruction = f"{context}\n\n{instruction}"
 
-            logger.info(f"Executing aider command: {' '.join(cmd[:3])}...")
+            # Add file context to instruction
+            if files:
+                files_text = f"\n\nFiles to modify:\n" + "\n".join(f"- {f}" for f in files)
+                full_instruction += files_text
+
+            # Build codex command
+            cmd = ["codex", "exec", "-m", self.model, full_instruction]
+
+            logger.info(f"Executing codex command with model={self.model}")
             logger.debug(f"Full instruction: {instruction}")
 
-            # Execute aider
+            # Execute codex
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -106,13 +113,13 @@ class AiderCodexAgent:
             except asyncio.TimeoutError:
                 process.kill()
                 await process.communicate()
-                raise TimeoutError(f"Aider execution exceeded {timeout} seconds")
+                raise TimeoutError(f"Codex execution exceeded {timeout} seconds")
 
             stdout_text = stdout.decode('utf-8') if stdout else ""
             stderr_text = stderr.decode('utf-8') if stderr else ""
 
-            # Parse aider output
-            result = self._parse_aider_output(stdout_text, stderr_text, files)
+            # Parse codex output
+            result = self._parse_codex_output(stdout_text, stderr_text, files)
 
             # Update metrics
             execution_time = (datetime.now() - start_time).total_seconds()
@@ -131,12 +138,12 @@ class AiderCodexAgent:
 
             result["execution_time"] = execution_time
 
-            logger.info(f"Aider execution {'succeeded' if result['success'] else 'failed'} in {execution_time:.2f}s")
+            logger.info(f"Codex execution {'succeeded' if result['success'] else 'failed'} in {execution_time:.2f}s")
 
             return result
 
         except Exception as e:
-            logger.error(f"Aider execution failed: {e}")
+            logger.error(f"Codex execution failed: {e}")
             self.metrics["failed_generations"] += 1
             return {
                 "success": False,
@@ -145,51 +152,13 @@ class AiderCodexAgent:
                 "modified_files": []
             }
 
-    def _build_aider_command(
-        self,
-        instruction: str,
-        files: List[str],
-        context: Optional[str] = None
-    ) -> List[str]:
-        """Build the aider CLI command"""
-        cmd = ["aider"]
-
-        # Model configuration
-        if self.model:
-            cmd.extend(["--model", self.model])
-
-        # Max reasoning for GPT-5.1
-        if self.max_reasoning:
-            cmd.append("--max-reasoning")
-
-        # Auto-accept changes
-        if self.auto_accept:
-            cmd.append("--yes")
-
-        # Disable auto-commits (we handle git separately)
-        cmd.append("--no-auto-commits")
-
-        # Add files to modify
-        for file_path in files:
-            cmd.append(str(file_path))
-
-        # Build full instruction
-        full_instruction = instruction
-        if context:
-            full_instruction = f"{context}\n\n{instruction}"
-
-        # Add instruction as message
-        cmd.extend(["--message", full_instruction])
-
-        return cmd
-
-    def _parse_aider_output(
+    def _parse_codex_output(
         self,
         stdout: str,
         stderr: str,
         files: List[str]
     ) -> Dict[str, Any]:
-        """Parse aider output to extract results"""
+        """Parse codex output to extract results"""
 
         # Check for errors in stderr
         if stderr and ("error" in stderr.lower() or "failed" in stderr.lower()):
@@ -203,19 +172,19 @@ class AiderCodexAgent:
         # Parse modified files from output
         modified_files = []
         for line in stdout.split('\n'):
-            if "modified:" in line.lower() or "created:" in line.lower():
+            if any(keyword in line.lower() for keyword in ["modified:", "created:", "wrote to", "updated:"]):
                 # Extract file path from line
                 for file_path in files:
                     if file_path in line:
                         modified_files.append(file_path)
 
-        # If no explicit modifications found, assume all files were considered
+        # If no explicit modifications found but stdout exists, check for success indicators
         if not modified_files and stdout:
-            # Check if aider successfully executed
-            if "added" in stdout.lower() or "modified" in stdout.lower():
+            # Check if codex successfully executed
+            if any(keyword in stdout.lower() for keyword in ["added", "modified", "created", "success", "completed"]):
                 modified_files = files.copy()
 
-        success = len(modified_files) > 0 or "successfully" in stdout.lower()
+        success = len(modified_files) > 0 or "successfully" in stdout.lower() or "completed" in stdout.lower()
 
         return {
             "success": success,
