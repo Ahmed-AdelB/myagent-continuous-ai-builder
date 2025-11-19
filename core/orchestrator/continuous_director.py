@@ -5,7 +5,7 @@ This is the brain that coordinates all agents and ensures continuous improvement
 
 import asyncio
 import time
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, TYPE_CHECKING
 from datetime import datetime, timedelta
 from enum import Enum
 from dataclasses import dataclass, field
@@ -18,6 +18,13 @@ from loguru import logger
 
 # Task validator for preventing false completion claims
 from .task_validator import TaskValidator, ValidationResult
+
+# Guardrails for safe autonomous operation
+from .guardrails import GuardrailSystem, RiskLevel, GuardrailViolation
+
+# Type checking imports to avoid circular dependencies
+if TYPE_CHECKING:
+    from core.agents.base_agent import AgentTask
 
 # Configure logging
 logger.add("logs/orchestrator.log", rotation="1 day", retention="30 days", level="DEBUG")
@@ -168,7 +175,14 @@ class ContinuousDirector:
         # Task validator (prevents false completion claims)
         self.task_validator = TaskValidator(project_root=Path.cwd())
 
+        # Guardrail system (prevents dangerous operations in autonomous mode)
+        self.guardrails = GuardrailSystem(
+            autonomous_mode=True,  # Enable autonomous mode restrictions
+            project_root=Path.cwd()
+        )
+
         logger.info(f"Initialized ContinuousDirector for project: {project_name}")
+        logger.info("Guardrails enabled - dangerous operations will be blocked")
 
     async def start(self):
         """Start the continuous development process"""
@@ -1223,7 +1237,7 @@ class ContinuousDirector:
 
         return weak_metrics
 
-    async def on_agent_task_complete(self, agent_id: str, task: AgentTask):
+    async def on_agent_task_complete(self, agent_id: str, task: "AgentTask"):
         """
         Callback invoked by agents when they complete a task.
 

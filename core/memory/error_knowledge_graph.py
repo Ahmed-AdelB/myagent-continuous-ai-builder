@@ -561,3 +561,4 @@ class ErrorKnowledgeGraph:
             json.dump(graph_data, f, indent=2)
 
         logger.info(f"Exported knowledge graph to {path}")
+        return graph_data
