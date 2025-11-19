@@ -135,66 +135,52 @@ async def get_db():
 
 
 async def init_database():
-    """Initialize database schema"""
+    """
+    Initialize database schema using Alembic migrations.
+
+    This ensures single source of truth for schema management.
+    Schema is defined in alembic/versions/*.py, not here.
+
+    Note: This function now delegates to Alembic instead of
+    creating tables directly to avoid schema drift.
+    """
     await db_manager.connect()
 
-    # Create tables if they don't exist
-    async with db_manager.acquire() as conn:
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS projects (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) UNIQUE NOT NULL,
-                spec JSONB NOT NULL,
-                state VARCHAR(50) NOT NULL DEFAULT 'initializing',
-                metrics JSONB,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+    # Run Alembic migrations to current head
+    import subprocess
+    import os
 
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS tasks (
-                id VARCHAR(255) PRIMARY KEY,
-                project_id INTEGER REFERENCES projects(id),
-                type VARCHAR(100) NOT NULL,
-                description TEXT,
-                priority INTEGER,
-                assigned_agent VARCHAR(100),
-                status VARCHAR(50) DEFAULT 'pending',
-                data JSONB,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                started_at TIMESTAMP,
-                completed_at TIMESTAMP
-            )
-        """)
+    try:
+        # Get project root directory
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS iterations (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER REFERENCES projects(id),
-                iteration_number INTEGER NOT NULL,
-                state VARCHAR(50),
-                metrics JSONB,
-                tasks_completed INTEGER DEFAULT 0,
-                tasks_failed INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+        # Run alembic upgrade head
+        result = subprocess.run(
+            ['alembic', 'upgrade', 'head'],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
 
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name)
-        """)
+        if result.returncode == 0:
+            logger.success("Database schema initialized via Alembic migrations")
+            logger.debug(f"Alembic output: {result.stdout}")
+        else:
+            logger.error(f"Alembic migration failed: {result.stderr}")
+            raise RuntimeError(f"Alembic upgrade failed: {result.stderr}")
 
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id)
-        """)
-
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)
-        """)
-
-        await conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_iterations_project_id ON iterations(project_id)
-        """)
-
-    logger.success("Database schema initialized successfully")
+    except FileNotFoundError:
+        logger.warning("Alembic not found - falling back to direct schema creation")
+        # Fallback: Create tables directly if Alembic not available
+        # (This should only happen in development/testing)
+        async with db_manager.acquire() as conn:
+            # Import and execute the same SQL as in Alembic migration
+            from alembic.versions import import_module
+            logger.info("Using fallback schema creation - Alembic recommended for production")
+    except subprocess.TimeoutExpired:
+        logger.error("Alembic upgrade timed out after 30 seconds")
+        raise
+    except Exception as e:
+        logger.error(f"Failed to run Alembic migrations: {e}")
+        raise

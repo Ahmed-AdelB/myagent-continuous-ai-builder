@@ -61,6 +61,7 @@ def upgrade() -> None:
 
     op.execute("CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_iterations_project_id ON iterations(project_id)")
 
 
