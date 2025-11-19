@@ -31,7 +31,6 @@ async def main():
 
     # Initialize tri-agent SDLC orchestrator
     orchestrator = TriAgentSDLCOrchestrator(
-        project_name="MyAgent-TriAgent-Demo",
         working_dir=Path.cwd()
     )
 

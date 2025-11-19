@@ -173,21 +173,34 @@ async def process_frontend_tests(orchestrator):
         logger.info(f"Processing work item {idx}/5: {work_item_spec['title']}")
         logger.info("=" * 80)
 
+        # Build enhanced description with file paths and acceptance criteria
+        enhanced_description = work_item_spec['description']
+        enhanced_description += f"\n\n**File Paths:**\n"
+        for fp in work_item_spec['file_paths']:
+            enhanced_description += f"- {fp}\n"
+        enhanced_description += f"\n**Acceptance Criteria:**\n"
+        for criterion in work_item_spec['acceptance_criteria']:
+            enhanced_description += f"- {criterion}\n"
+
         # Add work item to tri-agent SDLC
         work_item_id = orchestrator.add_work_item(
             title=work_item_spec['title'],
-            description=work_item_spec['description'],
-            priority=work_item_spec['priority'],
-            file_paths=work_item_spec['file_paths'],
-            acceptance_criteria=work_item_spec['acceptance_criteria']
+            description=enhanced_description,
+            priority=work_item_spec['priority']
         )
 
         logger.info(f"Created work item ID: {work_item_id}")
         logger.info("")
 
+        # Get the WorkItem object from the queue
+        work_item = next((item for item in orchestrator.work_queue if item.id == work_item_id), None)
+        if not work_item:
+            logger.error(f"Work item {work_item_id} not found in queue")
+            continue
+
         # Process through 5-phase SDLC with tri-agent consensus
         try:
-            result = await orchestrator.process_work_item(work_item_id)
+            result = await orchestrator.process_work_item(work_item)
             results.append({
                 "work_item": work_item_spec['title'],
                 "success": result.get('success'),
@@ -231,7 +244,6 @@ async def main():
 
     # Initialize tri-agent SDLC orchestrator
     orchestrator = TriAgentSDLCOrchestrator(
-        project_name="MyAgent-Completion",
         working_dir=Path.cwd()
     )
 
@@ -269,8 +281,10 @@ async def main():
     logger.info(f"  Total Items: {metrics.get('total_items')}")
     logger.info(f"  Completed: {metrics.get('completed_items')}")
     logger.info(f"  Failed: {metrics.get('failed_items')}")
-    logger.info(f"  Unanimous Approvals: {metrics.get('unanimous_approvals')}")
-    logger.info(f"  Approval Rate: {metrics.get('unanimous_approvals') / max(metrics.get('total_votes', 1), 1) * 100:.1f}%")
+    unanimous_approvals = metrics.get('unanimous_approvals') or 0
+    total_votes = metrics.get('total_votes') or 1
+    logger.info(f"  Unanimous Approvals: {unanimous_approvals}")
+    logger.info(f"  Approval Rate: {unanimous_approvals / total_votes * 100:.1f}%")
 
     logger.info("")
     logger.info("=" * 80)
