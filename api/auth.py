@@ -166,13 +166,13 @@ class AuthService:
         key_data = redis_client.get(f"api_key:{key_hash}")
 
         if key_data:
-            # Update last used
-            data = eval(key_data)
+            # Update last used - SECURITY FIX: use json.loads not eval
+            data = json.loads(key_data)
             data["last_used"] = datetime.utcnow().isoformat()
             redis_client.setex(
                 f"api_key:{key_hash}",
                 timedelta(days=365),
-                str(data)
+                json.dumps(data)
             )
             return data
 
@@ -214,13 +214,14 @@ class SessionManager:
         session_data = redis_client.get(f"session:{session_id}")
 
         if session_data:
-            data = eval(session_data)
+            # SECURITY FIX: use json.loads not eval
+            data = json.loads(session_data)
             # Update last activity
             data["last_activity"] = datetime.utcnow().isoformat()
             redis_client.setex(
                 f"session:{session_id}",
                 timedelta(hours=24),
-                str(data)
+                json.dumps(data)
             )
             return data
 
@@ -232,7 +233,8 @@ class SessionManager:
         session_data = redis_client.get(f"session:{session_id}")
 
         if session_data:
-            data = eval(session_data)
+            # SECURITY FIX: use json.loads not eval
+            data = json.loads(session_data)
             user_id = data.get("user_id")
 
             # Remove session
