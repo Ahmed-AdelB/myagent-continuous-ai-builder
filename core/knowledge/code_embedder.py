@@ -8,27 +8,41 @@ Implements embedding generation with:
 - Local caching to avoid redundant API calls
 - Error handling with exponential backoff
 
-Security (Gemini recommendations):
-- TODO: Audit logging for API calls
-- TODO: PII validation before embedding
-- Uses API key from environment (config/settings.py)
+Security (Gemini recommendations - FULLY IMPLEMENTED):
+- ✅ PII validation before embedding (Priority 1)
+- ✅ API key from environment (config/settings.py)
+- ✅ File permissions chmod 750 on cache directory (Priority 2)
+- ✅ Audit logging for API calls and PII detections (Priority 3)
 
 Based on: docs/architecture/rag_specification.md (v1.1)
 Issue: #3
 Implementation: Claude (Sonnet 4.5) - Based on Codex patterns
-Security review: Gemini (2.5 Pro) - TODO
+Security review: Gemini (2.5 Pro) - Conditional approval granted
 """
 
 import asyncio
 import hashlib
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# PII scanning (Gemini Priority 1 requirement)
+from core.utils.pii_scanner import scan_for_pii
+
+# Audit logging (Gemini Priority 3 requirement)
+from core.utils.audit_logger import get_embedder_audit_logger
+
+
+class SecurityError(Exception):
+    """Raised when security validation fails (e.g., PII detected)."""
+    pass
+
 
 # OpenAI imports
 try:
@@ -51,10 +65,11 @@ class CodeEmbedder:
     - Exponential backoff for rate limits
     - Error handling and fallbacks
 
-    Security:
-    - API key from environment (config/settings.py)
-    - TODO: Audit logging
-    - TODO: PII validation
+    Security (Gemini requirements):
+    - ✅ PII validation before embedding (Priority 1)
+    - ✅ API key from environment (config/settings.py)
+    - ✅ SecurityError raised if PII detected
+    - TODO: Audit logging (Priority 3)
     """
 
     def __init__(
@@ -87,8 +102,19 @@ class CodeEmbedder:
         if self.cache_enabled:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
 
+            # Security (Gemini Priority 2): Set file permissions chmod 750
+            # Restricts access to owner (rwx) and group (r-x), no access for others
+            try:
+                os.chmod(self.cache_dir, 0o750)
+                logger.info(f"Set permissions 750 on {self.cache_dir}")
+            except Exception as exc:
+                logger.warning(f"Failed to set permissions on {self.cache_dir}: {exc}")
+
         # Initialize OpenAI client
         self.client = self._init_client()
+
+        # Audit logger (Gemini Priority 3)
+        self.audit_logger = get_embedder_audit_logger()
 
         # Stats
         self.stats = {
@@ -121,33 +147,70 @@ class CodeEmbedder:
             logger.error(f"Failed to initialize OpenAI client: {exc}")
             return None
 
-    async def embed(self, text: str) -> np.ndarray:
+    async def embed(self, text: str, chunk_id: Optional[str] = None) -> np.ndarray:
         """
         Generate embedding for single text.
 
         Args:
             text: Text to embed
+            chunk_id: Optional chunk identifier for audit logging
 
         Returns:
             Normalized embedding vector (1536 dimensions)
-        """
-        # TODO (Gemini): Add PII validation before embedding
 
-        embeddings = await self.embed_batch([text])
+        Raises:
+            SecurityError: If PII is detected in text
+        """
+        embeddings = await self.embed_batch([text], chunk_ids=[chunk_id] if chunk_id else None)
         return embeddings[0]
 
-    async def embed_batch(self, texts: List[str]) -> List[np.ndarray]:
+    async def embed_batch(
+        self,
+        texts: List[str],
+        chunk_ids: Optional[List[Optional[str]]] = None
+    ) -> List[np.ndarray]:
         """
         Generate embeddings for batch of texts.
 
         Args:
             texts: List of texts to embed (max 100)
+            chunk_ids: Optional list of chunk identifiers for audit logging
 
         Returns:
             List of normalized embedding vectors
+
+        Raises:
+            SecurityError: If PII is detected in any text
         """
         if not texts:
             return []
+
+        # Ensure chunk_ids matches texts length
+        if chunk_ids is None:
+            chunk_ids = [None] * len(texts)
+        elif len(chunk_ids) != len(texts):
+            raise ValueError("chunk_ids must have same length as texts")
+
+        # PII VALIDATION (Gemini Priority 1 - MUST happen before embedding)
+        for i, text in enumerate(texts):
+            pii_result = scan_for_pii(text, chunk_id=chunk_ids[i])
+            if pii_result.detected:
+                # Audit log PII detection (Gemini Priority 3)
+                finding_types = [f['type'] for f in pii_result.findings]
+                self.audit_logger.log_pii_detection(
+                    chunk_id=chunk_ids[i],
+                    num_findings=len(pii_result.findings),
+                    finding_types=finding_types,
+                )
+
+                error_msg = (
+                    f"PII detected in chunk {chunk_ids[i] or i}: "
+                    f"{len(pii_result.findings)} findings - "
+                    f"types: {finding_types}"
+                )
+                logger.error(error_msg)
+                self.stats["errors"] += 1
+                raise SecurityError(error_msg)
 
         if len(texts) > self.batch_size:
             logger.warning(
@@ -158,18 +221,19 @@ class CodeEmbedder:
             all_embeddings = []
             for i in range(0, len(texts), self.batch_size):
                 batch = texts[i:i + self.batch_size]
-                batch_embeddings = await self.embed_batch(batch)
+                batch_ids = chunk_ids[i:i + self.batch_size]
+                batch_embeddings = await self.embed_batch(batch, chunk_ids=batch_ids)
                 all_embeddings.extend(batch_embeddings)
             return all_embeddings
 
         # Check cache first
         if self.cache_enabled:
-            cached_embeddings = self._check_cache(texts)
+            cached_embeddings = self._check_cache(texts, chunk_ids)
             if cached_embeddings:
                 return cached_embeddings
 
         # Generate embeddings via API
-        embeddings = await self._generate_embeddings(texts)
+        embeddings = await self._generate_embeddings(texts, chunk_ids)
 
         # Cache results
         if self.cache_enabled and embeddings:
@@ -177,22 +241,38 @@ class CodeEmbedder:
 
         return embeddings
 
-    async def _generate_embeddings(self, texts: List[str]) -> List[np.ndarray]:
+    async def _generate_embeddings(
+        self,
+        texts: List[str],
+        chunk_ids: List[Optional[str]],
+    ) -> List[np.ndarray]:
         """Generate embeddings via OpenAI API with retry logic."""
         if not self.client:
             logger.error("OpenAI client not initialized")
             self.stats["errors"] += 1
+
+            # Audit log failure
+            self.audit_logger.log_embedding_call(
+                chunk_id=chunk_ids[0] if chunk_ids else None,
+                status="failure",
+                num_texts=len(texts),
+                error="OpenAI client not initialized",
+            )
+
             # Return zero vectors as fallback
             return [np.zeros(1536) for _ in texts]
 
         for attempt in range(self.max_retries):
             try:
-                # TODO (Gemini): Add audit logging for API call
+                # Track API call duration for audit logging
+                start_time = time.time()
 
                 response = await self.client.embeddings.create(
                     model=self.model,
                     input=texts,
                 )
+
+                duration_ms = (time.time() - start_time) * 1000
 
                 # Extract embeddings
                 raw_embeddings = [item.embedding for item in response.data]
@@ -205,9 +285,17 @@ class CodeEmbedder:
                 self.stats["cache_misses"] += len(texts)
                 self.stats["total_tokens"] += response.usage.total_tokens
 
+                # Audit log successful API call (Gemini Priority 3)
+                self.audit_logger.log_embedding_call(
+                    chunk_id=chunk_ids[0] if chunk_ids else None,
+                    status="success",
+                    duration_ms=duration_ms,
+                    num_texts=len(texts),
+                )
+
                 logger.debug(
                     f"Generated {len(embeddings)} embeddings "
-                    f"({response.usage.total_tokens} tokens)"
+                    f"({response.usage.total_tokens} tokens) in {duration_ms:.1f}ms"
                 )
 
                 return embeddings
@@ -224,6 +312,15 @@ class CodeEmbedder:
                 else:
                     logger.error(f"Failed to generate embeddings after {self.max_retries} attempts")
                     self.stats["errors"] += 1
+
+                    # Audit log failure after all retries exhausted
+                    self.audit_logger.log_embedding_call(
+                        chunk_id=chunk_ids[0] if chunk_ids else None,
+                        status="failure",
+                        num_texts=len(texts),
+                        error=str(exc),
+                    )
+
                     # Return zero vectors as fallback
                     return [np.zeros(1536) for _ in texts]
 
@@ -235,7 +332,11 @@ class CodeEmbedder:
             vec = vec / norm
         return vec
 
-    def _check_cache(self, texts: List[str]) -> Optional[List[np.ndarray]]:
+    def _check_cache(
+        self,
+        texts: List[str],
+        chunk_ids: List[Optional[str]],
+    ) -> Optional[List[np.ndarray]]:
         """Check if all texts are in cache."""
         embeddings = []
 
@@ -253,6 +354,12 @@ class CodeEmbedder:
             except Exception as exc:
                 logger.warning(f"Failed to load cache file {cache_file}: {exc}")
                 return None
+
+        # Audit log cache hit (Gemini Priority 3)
+        self.audit_logger.log_cache_hit(
+            chunk_id=chunk_ids[0] if chunk_ids else None,
+            num_texts=len(texts),
+        )
 
         logger.debug(f"Cache hit for {len(texts)} texts")
         return embeddings

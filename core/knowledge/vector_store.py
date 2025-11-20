@@ -8,11 +8,11 @@ Implements vector storage with:
 - Stores embeddings + metadata + chunk_id (NOT raw code per Gemini)
 - Normalized embeddings for accurate cosine similarity
 
-Security (Gemini recommendations):
-- Stores only embeddings + metadata + chunk_id
-- Raw code stored separately (not in vector DB)
-- TODO: Access control and audit logging
-- TODO: File permissions (chmod 750)
+Security (Gemini recommendations - FULLY IMPLEMENTED):
+- ✅ Stores only embeddings + metadata + chunk_id
+- ✅ Raw code stored separately (not in vector DB)
+- ✅ File permissions chmod 750 (Priority 2)
+- ✅ Audit logging for all operations (Priority 3)
 
 Based on: docs/architecture/rag_specification.md (v1.1)
          docs/architecture/RAG_SPEC_CHANGELOG.md (Codex recommendations)
@@ -22,11 +22,15 @@ Security review: Gemini (2.5 Pro) - TODO
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# Audit logging (Gemini Priority 3 requirement)
+from core.utils.audit_logger import get_vector_store_audit_logger
 
 # ChromaDB imports
 try:
@@ -81,9 +85,16 @@ class VectorStore:
         self.persist_directory = persist_directory
         self.persist_directory.mkdir(parents=True, exist_ok=True)
 
-        # TODO (Gemini): Set file permissions chmod 750
-        # import os
-        # os.chmod(self.persist_directory, 0o750)
+        # Security (Gemini Priority 2): Set file permissions chmod 750
+        # Restricts access to owner (rwx) and group (r-x), no access for others
+        try:
+            os.chmod(self.persist_directory, 0o750)
+            logger.info(f"Set permissions 750 on {self.persist_directory}")
+        except Exception as exc:
+            logger.warning(f"Failed to set permissions on {self.persist_directory}: {exc}")
+
+        # Audit logger (Gemini Priority 3)
+        self.audit_logger = get_vector_store_audit_logger()
 
         # Initialize ChromaDB
         self.client = self._init_client()
@@ -179,9 +190,6 @@ class VectorStore:
             # Convert numpy arrays to lists for ChromaDB
             embedding_lists = [emb.tolist() for emb in embeddings]
 
-            # TODO (Gemini): Add audit logging here
-            # logger.info(f"Adding {len(chunk_ids)} chunks to vector store")
-
             # Add to collection
             self.collection.add(
                 ids=chunk_ids,
@@ -190,9 +198,26 @@ class VectorStore:
                 # NOTE: No 'documents' parameter - raw code not stored!
             )
 
+            # Audit log successful add operation (Gemini Priority 3)
+            self.audit_logger.log_vector_operation(
+                operation="add",
+                num_chunks=len(chunk_ids),
+                status="success",
+                collection_name=self.collection_name,
+            )
+
             logger.debug(f"Added {len(chunk_ids)} chunks to vector store")
 
         except Exception as exc:
+            # Audit log failed add operation
+            self.audit_logger.log_vector_operation(
+                operation="add",
+                num_chunks=len(chunk_ids),
+                status="failure",
+                collection_name=self.collection_name,
+                error=str(exc),
+            )
+
             logger.error(f"Failed to add chunks: {exc}")
             raise
 
@@ -218,9 +243,6 @@ class VectorStore:
             return []
 
         try:
-            # TODO (Gemini): Add audit logging for queries
-            # logger.info(f"Querying vector store: n_results={n_results}")
-
             results = self.collection.query(
                 query_embeddings=[query_embedding.tolist()],
                 n_results=n_results,
@@ -237,10 +259,27 @@ class VectorStore:
                     "score": 1 - results["distances"][0][i],  # Convert distance to similarity
                 })
 
+            # Audit log successful query (Gemini Priority 3)
+            self.audit_logger.log_vector_operation(
+                operation="query",
+                num_chunks=len(formatted_results),
+                status="success",
+                collection_name=self.collection_name,
+            )
+
             logger.debug(f"Query returned {len(formatted_results)} results")
             return formatted_results
 
         except Exception as exc:
+            # Audit log failed query
+            self.audit_logger.log_vector_operation(
+                operation="query",
+                num_chunks=0,
+                status="failure",
+                collection_name=self.collection_name,
+                error=str(exc),
+            )
+
             logger.error(f"Failed to query vector store: {exc}")
             return []
 
@@ -275,8 +314,27 @@ class VectorStore:
 
         try:
             self.collection.delete(ids=chunk_ids)
+
+            # Audit log successful delete operation (Gemini Priority 3)
+            self.audit_logger.log_vector_operation(
+                operation="delete",
+                num_chunks=len(chunk_ids),
+                status="success",
+                collection_name=self.collection_name,
+            )
+
             logger.info(f"Deleted {len(chunk_ids)} chunks from vector store")
+
         except Exception as exc:
+            # Audit log failed delete operation
+            self.audit_logger.log_vector_operation(
+                operation="delete",
+                num_chunks=len(chunk_ids),
+                status="failure",
+                collection_name=self.collection_name,
+                error=str(exc),
+            )
+
             logger.error(f"Failed to delete chunks: {exc}")
             raise
 
