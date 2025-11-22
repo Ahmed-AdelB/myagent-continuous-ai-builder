@@ -853,7 +853,7 @@ class KnowledgeGraphManager:
             # Extract organizations (simplified)
             org_keywords = ['Company', 'Inc', 'Corp', 'Ltd', 'Organization', 'Institute']
             for keyword in org_keywords:
-                pattern = f r'\b[A-Z][a-zA-Z\s]+{keyword}\b'
+                pattern = rf'\b[A-Z][a-zA-Z\s]+{keyword}\b'
                 org_matches = re.findall(pattern, text)
 
                 for match in org_matches:

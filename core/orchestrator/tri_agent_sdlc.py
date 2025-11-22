@@ -20,6 +20,16 @@ from loguru import logger
 from ..agents.cli_agents import AiderCodexAgent, GeminiCLIAgent, ClaudeCodeSelfAgent
 from ..knowledge import RAGRetriever
 
+# Issue #5: Resilience components
+from ..resilience import (
+    TaskLedger,
+    RetryStrategy,
+    RetryConfig,
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitBreakerOpen,
+)
+
 
 class SDLCPhase(Enum):
     """SDLC phases for workflow"""
@@ -106,6 +116,38 @@ class TriAgentSDLCOrchestrator:
                 logger.warning(f"RAGRetriever initialization failed: {e}. Falling back to simple context.")
                 self.rag_retriever = None
 
+        # Task resilience (Issue #5)
+        self.task_ledger = TaskLedger(
+            db_path=Path("persistence/database/task_ledger.db")
+        )
+
+        self.retry_strategy = RetryStrategy(
+            RetryConfig(
+                max_retries=3,
+                base_delay_ms=100,
+                exponential_base=2.0,
+                jitter=True
+            )
+        )
+
+        # Circuit breakers per agent
+        self.circuit_breakers = {
+            "claude": CircuitBreaker(
+                "claude_code_agent",
+                CircuitBreakerConfig(failure_threshold=5, timeout_seconds=60)
+            ),
+            "codex": CircuitBreaker(
+                "aider_codex_agent",
+                CircuitBreakerConfig(failure_threshold=5, timeout_seconds=60)
+            ),
+            "gemini": CircuitBreaker(
+                "gemini_cli_agent",
+                CircuitBreakerConfig(failure_threshold=5, timeout_seconds=60)
+            ),
+        }
+
+        logger.info("✅ Resilience components initialized (TaskLedger + Retry + CircuitBreakers)")
+
         # Work queue
         self.work_queue: List[WorkItem] = []
         self.active_items: List[WorkItem] = []
@@ -160,6 +202,102 @@ class TriAgentSDLCOrchestrator:
         logger.info(f"Added work item {item_id}: {title}")
 
         return item_id
+
+    async def initialize(self) -> None:
+        """
+        Initialize async components (TaskLedger, RAGRetriever).
+
+        Must be called before processing work items.
+
+        Issue #5: Initializes TaskLedger database schema.
+        """
+        logger.info("Initializing TriAgentSDLCOrchestrator async components...")
+
+        # Initialize TaskLedger (Issue #5)
+        await self.task_ledger.initialize()
+        logger.info("✓ TaskLedger initialized")
+
+        # Initialize RAGRetriever if enabled (Issue #4)
+        if self.rag_retriever and not hasattr(self.rag_retriever, 'indexer'):
+            await self.rag_retriever.initialize()
+            logger.info("✓ RAGRetriever initialized")
+
+        logger.info("✅ All async components initialized")
+
+    async def _execute_agent_task_with_resilience(
+        self,
+        agent_name: str,
+        task_type: str,
+        agent_callable: callable,
+        *args,
+        **kwargs
+    ) -> Any:
+        """
+        Execute agent task with full resilience:
+        1. Enqueue in task ledger
+        2. Execute through circuit breaker
+        3. Retry with exponential backoff on transient failures
+        4. Move to dead-letter queue on permanent failure
+
+        Args:
+            agent_name: Agent name ("claude", "codex", "gemini")
+            task_type: Task type (e.g., "requirements_analysis", "code_generation")
+            agent_callable: Agent method to call
+            *args, **kwargs: Arguments for agent_callable
+
+        Returns:
+            Agent result
+
+        Raises:
+            CircuitBreakerOpen: If circuit breaker is open
+            Exception: If all retries exhausted
+
+        Issue #5: Full resilience integration
+        """
+        # Enqueue task
+        task_id = await self.task_ledger.enqueue(
+            agent_name=agent_name,
+            task_type=task_type,
+            payload={"args": str(args), "kwargs": str(kwargs)},  # Simplified payload
+            priority=0,
+            max_retries=3
+        )
+
+        try:
+            # Mark as running
+            await self.task_ledger.mark_running(task_id)
+
+            # Get circuit breaker for agent
+            breaker = self.circuit_breakers.get(agent_name)
+
+            # Execute with retry + circuit breaker
+            async def execute_task():
+                # Execute through circuit breaker
+                if breaker:
+                    return await breaker.call(agent_callable, *args, **kwargs)
+                else:
+                    # No circuit breaker - direct execution
+                    return await agent_callable(*args, **kwargs)
+
+            # Execute with exponential backoff retry
+            result = await self.retry_strategy.execute_with_retry(execute_task)
+
+            # Mark as done
+            await self.task_ledger.mark_done(task_id, {"status": "success"})
+
+            return result
+
+        except CircuitBreakerOpen as exc:
+            # Circuit breaker open → mark as blocked
+            await self.task_ledger.mark_blocked(task_id, str(exc))
+            logger.error(f"Circuit breaker open for {agent_name}: {exc}")
+            raise
+
+        except Exception as exc:
+            # Permanent failure → mark as failed + dead-letter queue
+            await self.task_ledger.mark_failed(task_id, str(exc))
+            logger.error(f"Task {task_id} permanently failed: {exc}")
+            raise
 
     async def process_all_items(self) -> Dict[str, Any]:
         """
