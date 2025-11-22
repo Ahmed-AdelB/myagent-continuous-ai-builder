@@ -175,12 +175,17 @@ alembic revision --autogenerate -m "Description"
 
 ### Tri-Agent CLI Tools
 
-```bash
-# Aider (Codex GPT-5.1) - Note: Use --reasoning-effort NOT --max-reasoning
-aider --model o1-preview --reasoning-effort high --yes <files>
+**⚠️ IMPORTANT**: Use `codex` command (NOT `aider`)!
 
-# Gemini CLI
+```bash
+# Codex (GPT-5.1-Codex-Max) - Primary code implementation agent
+codex exec --message "<task description>" <files>
+codex exec --message "Implement feature X" src/component.py
+
+# Gemini CLI - Security review and strategic analysis
 google-gemini generate --model gemini-2.5-pro --prompt "<prompt>"
+
+# Note: 'aider' was previously used but is now deprecated in favor of 'codex'
 ```
 
 ### Git Workflow
