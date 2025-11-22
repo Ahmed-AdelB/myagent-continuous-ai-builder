@@ -30,6 +30,15 @@ from ..resilience import (
     CircuitBreakerOpen,
 )
 
+# Issue #6: Routing components
+from ..routing import (
+    TaskFitnessRouter,
+    AgentCapabilityMatrix,
+    LoadTracker,
+    WinRateTracker,
+    TaskDomain,
+)
+
 
 class SDLCPhase(Enum):
     """SDLC phases for workflow"""
@@ -148,6 +157,18 @@ class TriAgentSDLCOrchestrator:
 
         logger.info("✅ Resilience components initialized (TaskLedger + Retry + CircuitBreakers)")
 
+        # Task routing (Issue #6)
+        self.capability_matrix = AgentCapabilityMatrix()
+        self.load_tracker = LoadTracker(default_max_capacity=5)
+        self.win_rate_tracker = WinRateTracker(self.task_ledger, cache_ttl_seconds=60.0)
+        self.task_router = TaskFitnessRouter(
+            self.capability_matrix,
+            self.load_tracker,
+            self.win_rate_tracker
+        )
+
+        logger.info("✅ Task routing initialized (fitness-based with capability matrix)")
+
         # Work queue
         self.work_queue: List[WorkItem] = []
         self.active_items: List[WorkItem] = []
@@ -216,6 +237,12 @@ class TriAgentSDLCOrchestrator:
         # Initialize TaskLedger (Issue #5)
         await self.task_ledger.initialize()
         logger.info("✓ TaskLedger initialized")
+
+        # Initialize LoadTracker for routing (Issue #6)
+        await self.load_tracker.initialize_agent("claude", max_capacity=5)
+        await self.load_tracker.initialize_agent("codex", max_capacity=5)
+        await self.load_tracker.initialize_agent("gemini", max_capacity=5)
+        logger.info("✓ LoadTracker initialized for all agents")
 
         # Initialize RAGRetriever if enabled (Issue #4)
         if self.rag_retriever and not hasattr(self.rag_retriever, 'indexer'):
