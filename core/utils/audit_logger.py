@@ -76,10 +76,16 @@ class AuditLogger:
         # Create directory if needed
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
+        # Set directory permissions to 750 (owner rwx, group r-x)
+        import os
+        try:
+            os.chmod(self.log_file.parent, 0o750)
+        except Exception:
+            pass  # Best effort
+
         # Set file permissions to 640 (owner read/write, group read)
         if not self.log_file.exists():
             self.log_file.touch()
-            import os
             try:
                 os.chmod(self.log_file, 0o640)
             except Exception:

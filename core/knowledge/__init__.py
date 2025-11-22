@@ -26,7 +26,7 @@ from .knowledge_graph_manager import (
 
 # RAG components (new - Issue #3)
 try:
-    from .rag_retriever import RAGRetriever
+    from .rag_retriever import RAGRetriever, CodeChunk
     from .code_embedder import CodeEmbedder
     from .vector_store import VectorStore
     from .codebase_indexer import CodebaseIndexer
@@ -54,6 +54,7 @@ __all__ = [
 if _rag_available:
     __all__.extend([
         'RAGRetriever',
+        'CodeChunk',
         'CodeEmbedder',
         'VectorStore',
         'CodebaseIndexer'
