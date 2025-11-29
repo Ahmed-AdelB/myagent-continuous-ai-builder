@@ -1,0 +1,5 @@
+2025-11-29 18:53:38.703 | INFO     | __main__:run_gpt5_priority_tests:187 - Running GPT-5 priority system tests...
+2025-11-29 18:53:38.703 | INFO     | __main__:run_specific_tests:153 - Running specific tests: tests/unit/test_gpt5_p4_memory.py
+2025-11-29 18:53:56.763 | INFO     | __main__:run_specific_tests:153 - Running specific tests: tests/unit/test_gpt5_p5_security.py
+2025-11-29 18:54:12.740 | INFO     | __main__:run_specific_tests:153 - Running specific tests: tests/unit/test_gpt5_p6_healing.py
+2025-11-29 18:54:29.918 | INFO     | __main__:run_specific_tests:153 - Running specific tests: tests/unit/test_gpt5_p7_knowledge.py

@@ -244,9 +244,14 @@ class MockSelfHealingOrchestrator:
         # Execute REAL repair process - NO SIMULATION IN SAFETY-CRITICAL SYSTEM
         import subprocess
         import psutil
+        import random
 
         # Perform actual system repair based on action
         try:
+            # Simulate failure for testing if configured
+            if hasattr(action, 'success_rate') and random.random() > action.success_rate:
+                raise Exception("Simulated failure for testing")
+
             if action.name == "restart_api_server":
                 # Real API server restart
                 for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
@@ -497,6 +502,7 @@ def sample_repair_actions():
     ]
 
 
+@pytest.mark.gpt5
 class TestSelfHealingOrchestrator:
     """Comprehensive tests for Self-Healing Orchestrator"""
 

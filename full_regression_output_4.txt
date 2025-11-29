@@ -1,0 +1,1035 @@
+/Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.1.1, pluggy-1.6.0
+rootdir: /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder
+configfile: pytest.ini
+plugins: asyncio-0.23.5, anyio-4.12.0, langsmith-0.4.37, cov-4.1.0
+asyncio: mode=strict
+collected 119 items
+
+tests/unit/test_gpt5_p4_memory.py .......................                [ 19%]
+tests/unit/test_gpt5_p5_security.py .FFFFFFFFFFFFF.FF......              [ 38%]
+tests/unit/test_gpt5_p7_knowledge.py .......................F.F          [ 60%]
+tests/unit/test_gpt5_p9_deployment.py ........................           [ 80%]
+tests/unit/test_gpt5_p10_causal.py .......................               [100%]
+
+=================================== FAILURES ===================================
+__________ TestSecurityComplianceScanner.test_sql_injection_detection __________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f85ca0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x150ff09a0>
+
+    @pytest.mark.asyncio
+    async def test_sql_injection_detection(self, security_scanner):
+        """Test SQL injection vulnerability detection"""
+        vulnerable_code_samples = [
+            'query = f"SELECT * FROM users WHERE id = {user_id}"',
+            'cursor.execute("SELECT * FROM products WHERE name = \'%s\'" % product_name)',
+            'sql = "DELETE FROM logs WHERE date < " + cutoff_date',
+            'db.raw("INSERT INTO table VALUES (" + values + ")")'
+        ]
+    
+        safe_code_samples = [
+            'query = "SELECT * FROM users WHERE id = ?"',
+            'cursor.execute("SELECT * FROM products WHERE name = ?", (product_name,))',
+            'sql = "DELETE FROM logs WHERE date < %s"',
+            'db.query("INSERT INTO table VALUES (?)", (values,))'
+        ]
+    
+        # Test vulnerable code detection
+        for code in vulnerable_code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+            sql_injection_issues = [
+                issue for issue in issues
+                if issue.vulnerability_type == VulnerabilityType.SQL_INJECTION
+            ]
+            assert len(sql_injection_issues) > 0, f"Failed to detect SQL injection in: {code}"
+    
+        # Test safe code (should not trigger)
+        for code in safe_code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+            sql_injection_issues = [
+                issue for issue in issues
+                if issue.vulnerability_type == VulnerabilityType.SQL_INJECTION
+            ]
+>           assert len(sql_injection_issues) == 0, f"False positive SQL injection in: {code}"
+E           AssertionError: False positive SQL injection in: query = "SELECT * FROM users WHERE id = ?"
+E           assert 1 == 0
+E            +  where 1 = len([SecurityVulnerability(id='SQL_INJECTION_snippet_1_9', vulnerability_type=<VulnerabilityType.SQL_INJECTION: 'sql_injec...ne, cve_id=None, references=[], detected_at=datetime.datetime(2025, 11, 29, 13, 38, 27, 505356), false_positive=False)])
+
+tests/unit/test_gpt5_p5_security.py:87: AssertionError
+________ TestSecurityComplianceScanner.test_xss_vulnerability_detection ________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f6c400>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1510b3be0>
+
+    @pytest.mark.asyncio
+    async def test_xss_vulnerability_detection(self, security_scanner):
+        """Test XSS vulnerability detection"""
+        vulnerable_code_samples = [
+            'return f"<div>{user_input}</div>"',
+            'html = "<p>" + request.form["comment"] + "</p>"',
+            'content = f"<script>var data = {json_data};</script>"',
+            'template = "<h1>" + title + "</h1>"'
+        ]
+    
+        safe_code_samples = [
+            'return f"<div>{escape(user_input)}</div>"',
+            'html = "<p>" + html.escape(request.form["comment"]) + "</p>"',
+            'content = f"<script>var data = {json.dumps(json_data)};</script>"',
+            'template = template.render(title=title)'
+        ]
+    
+        # Test vulnerable code detection
+        for code in vulnerable_code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+            xss_issues = [
+                issue for issue in issues
+                if issue.vulnerability_type == VulnerabilityType.XSS
+            ]
+>           assert len(xss_issues) > 0, f"Failed to detect XSS in: {code}"
+E           AssertionError: Failed to detect XSS in: return f"<div>{user_input}</div>"
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests/unit/test_gpt5_p5_security.py:113: AssertionError
+________ TestSecurityComplianceScanner.test_hardcoded_secrets_detection ________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f6cac0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1510055b0>
+
+    @pytest.mark.asyncio
+    async def test_hardcoded_secrets_detection(self, security_scanner):
+        """Test hardcoded secrets detection"""
+        vulnerable_code_samples = [
+            'API_KEY = "sk-1234567890abcdef"',
+            'password = "admin123"',
+            'token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"',
+            'aws_secret = "AKIAIOSFODNN7EXAMPLE"',
+            'database_url = "postgres://user:password@localhost/db"'
+        ]
+    
+        safe_code_samples = [
+            'API_KEY = os.environ.get("API_KEY")',
+            'password = config.get("password")',
+            'token = request.headers.get("Authorization")',
+            'aws_secret = secrets.get_secret_value("aws_secret")',
+            'database_url = settings.DATABASE_URL'
+        ]
+    
+        # Test vulnerable code detection
+        for code in vulnerable_code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+            secret_issues = [
+                issue for issue in issues
+                if issue.vulnerability_type == VulnerabilityType.HARDCODED_SECRETS
+            ]
+>           assert len(secret_issues) > 0, f"Failed to detect hardcoded secret in: {code}"
+E           AssertionError: Failed to detect hardcoded secret in: database_url = "postgres://user:password@localhost/db"
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests/unit/test_gpt5_p5_security.py:150: AssertionError
+_________ TestSecurityComplianceScanner.test_insecure_crypto_detection _________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f6c0d0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x150febfd0>
+
+    @pytest.mark.asyncio
+    async def test_insecure_crypto_detection(self, security_scanner):
+        """Test insecure cryptography detection"""
+        vulnerable_code_samples = [
+            'from Crypto.Cipher import DES',
+            'hashlib.md5(password)',
+            'random.random()',
+            'ssl_context.check_hostname = False',
+            'hashlib.sha1(data)'
+        ]
+    
+        safe_code_samples = [
+            'from Crypto.Cipher import AES',
+            'hashlib.sha256(password)',
+            'secrets.SystemRandom()',
+            'ssl.create_default_context()',
+            'hashlib.sha256(data)'
+        ]
+    
+        # Test vulnerable code detection
+        for code in vulnerable_code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+            crypto_issues = [
+                issue for issue in issues
+                if issue.vulnerability_type == VulnerabilityType.INSECURE_CRYPTO
+            ]
+>           assert len(crypto_issues) > 0, f"Failed to detect insecure crypto in: {code}"
+E           AssertionError: Failed to detect insecure crypto in: from Crypto.Cipher import DES
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests/unit/test_gpt5_p5_security.py:187: AssertionError
+_________ TestSecurityComplianceScanner.test_path_traversal_detection __________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f6c730>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x150fe3940>
+
+    @pytest.mark.asyncio
+    async def test_path_traversal_detection(self, security_scanner):
+        """Test path traversal vulnerability detection"""
+        vulnerable_code_samples = [
+            'open(user_filename, "r")',
+            'file_path = f"/uploads/{request.form[\"filename\"]}"',
+            'with open(f"./files/{filename}") as f:',
+            'os.path.join("/base", user_input)'
+        ]
+    
+        safe_code_samples = [
+            'open(secure_filename(user_filename), "r")',
+            'file_path = safe_join("/uploads", request.form["filename"])',
+            'with open(validate_path(f"./files/{filename}")) as f:',
+            'os.path.join("/base", os.path.basename(user_input))'
+        ]
+    
+        # Test vulnerable code detection
+        for code in vulnerable_code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+            path_issues = [
+                issue for issue in issues
+                if issue.vulnerability_type == VulnerabilityType.PATH_TRAVERSAL
+            ]
+>           assert len(path_issues) > 0, f"Failed to detect path traversal in: {code}"
+E           AssertionError: Failed to detect path traversal in: open(user_filename, "r")
+E           assert 0 > 0
+E            +  where 0 = len([])
+
+tests/unit/test_gpt5_p5_security.py:223: AssertionError
+_________________ TestSecurityComplianceScanner.test_scan_file _________________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f6c5b0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x151228c70>
+tmp_path = PosixPath('/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pytest-5/test_scan_file0')
+
+        @pytest.mark.asyncio
+        async def test_scan_file(self, security_scanner, tmp_path):
+            """Test scanning individual files"""
+            # Create test file with vulnerabilities
+            test_file = tmp_path / "vulnerable_test.py"
+            test_file.write_text('''
+    import hashlib
+    import os
+    
+    # Hardcoded secret
+    API_KEY = "sk-1234567890abcdef"
+    
+    def get_user(user_id):
+        # SQL injection vulnerability
+        query = f"SELECT * FROM users WHERE id = {user_id}"
+        return execute_query(query)
+    
+    def render_comment(comment):
+        # XSS vulnerability
+        return f"<div>{comment}</div>"
+    
+    def hash_password(password):
+        # Weak crypto
+        return hashlib.md5(password.encode()).hexdigest()
+    ''')
+    
+            # Scan the file
+            scan_result = await security_scanner.scan_file(str(test_file))
+    
+            assert scan_result.target == str(test_file)
+>           assert len(scan_result.vulnerabilities) >= 4  # At least 4 vulnerabilities
+E           AssertionError: assert 3 >= 4
+E            +  where 3 = len([SecurityVulnerability(id='SQL_INJECTION_/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pyte...?i)(md5|sha1|des|rc4)\\s*\\('], detected_at=datetime.datetime(2025, 11, 29, 13, 38, 28, 601786), false_positive=False)])
+E            +    where [SecurityVulnerability(id='SQL_INJECTION_/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pyte...?i)(md5|sha1|des|rc4)\\s*\\('], detected_at=datetime.datetime(2025, 11, 29, 13, 38, 28, 601786), false_positive=False)] = SecurityScanResult(scan_id='626c31a573e31981d0fc2aa8d2264577', scan_type=<ScanType.CODE_VULNERABILITY: 1>, target='/pr...NSECURE_CRYPTO', 'SQL_INJECTION'], 'severity_breakdown': {'critical': 1, 'high': 1, 'medium': 1, 'low': 0, 'info': 0}}).vulnerabilities
+
+tests/unit/test_gpt5_p5_security.py:264: AssertionError
+______________ TestSecurityComplianceScanner.test_scan_directory _______________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f6ceb0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1511bc7f0>
+tmp_path = PosixPath('/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pytest-5/test_scan_directory0')
+
+        @pytest.mark.asyncio
+        async def test_scan_directory(self, security_scanner, tmp_path):
+            """Test scanning entire directories"""
+            # Create test files
+            files_data = {
+                "app.py": '''
+    API_KEY = "secret123"
+    def sql_query(id):
+        return f"SELECT * FROM table WHERE id = {id}"
+    ''',
+                "utils.py": '''
+    import hashlib
+    def weak_hash(data):
+        return hashlib.md5(data).hexdigest()
+    ''',
+                "views.py": '''
+    def render_user_input(data):
+        return f"<p>{data}</p>"
+    '''
+            }
+    
+            # Write test files
+            for filename, content in files_data.items():
+                (tmp_path / filename).write_text(content)
+    
+            # Scan directory
+            scan_results = await security_scanner.scan_directory(str(tmp_path))
+    
+            assert len(scan_results) == 3  # Three files scanned
+    
+            # Verify all files have issues
+            total_issues = sum(len(result.vulnerabilities) for result in scan_results)
+>           assert total_issues >= 4  # At least one issue per file
+E           assert 3 >= 4
+
+tests/unit/test_gpt5_p5_security.py:305: AssertionError
+__________ TestSecurityComplianceScanner.test_owasp_compliance_check ___________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150ed4730>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1511bcd30>
+
+    @pytest.mark.asyncio
+    async def test_owasp_compliance_check(self, security_scanner):
+        """Test OWASP compliance framework validation"""
+        # Create scan results with various vulnerabilities
+        issues = [
+            SecurityVulnerability(
+                id="vuln_1",
+                title="SQL Injection",
+                vulnerability_type=VulnerabilityType.SQL_INJECTION,
+                severity=SecurityLevel.HIGH,
+                description="SQL injection vulnerability",
+                line_number=10
+            ),
+            SecurityVulnerability(
+                id="vuln_2",
+                title="XSS",
+                vulnerability_type=VulnerabilityType.XSS,
+                severity=SecurityLevel.MEDIUM,
+                description="XSS vulnerability",
+                line_number=15
+            ),
+            SecurityVulnerability(
+                id="vuln_3",
+                title="Hardcoded Secrets",
+                vulnerability_type=VulnerabilityType.HARDCODED_SECRETS,
+                severity=SecurityLevel.CRITICAL,
+                description="Hardcoded API key",
+                line_number=5
+            )
+        ]
+    
+        scan_result = SecurityScanResult(
+            scan_id="test_scan",
+>           scan_type=ScanType.CODE_VULNERABILITY,
+            target="/test/file.py",
+            start_time=datetime.utcnow(),
+            end_time=datetime.utcnow(),
+            vulnerabilities=issues,
+            scan_timestamp=pytest.approx(1234567890)
+        )
+E       NameError: name 'ScanType' is not defined
+
+tests/unit/test_gpt5_p5_security.py:340: NameError
+___________ TestSecurityComplianceScanner.test_gdpr_compliance_check ___________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150ed4be0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x151005ca0>
+
+    @pytest.mark.asyncio
+    async def test_gdpr_compliance_check(self, security_scanner):
+        """Test GDPR compliance framework validation"""
+        # Create code with potential GDPR issues
+        code_samples = [
+            'user_data = {"email": email, "name": name, "ip": request.remote_addr}',
+            'log.info(f"User {user.email} performed action")',
+            'analytics.track(user_id, sensitive_data)',
+            'cookie_data = request.cookies.get("tracking")'
+        ]
+    
+        all_issues = []
+        for code in code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+            all_issues.extend(issues)
+    
+        # Create scan result
+        scan_result = SecurityScanResult(
+            scan_id="test_scan_gdpr",
+>           scan_type=ScanType.CODE_VULNERABILITY,
+            target="/test/gdpr_test.py",
+            start_time=datetime.utcnow(),
+            end_time=datetime.utcnow(),
+            vulnerabilities=all_issues,
+            scan_timestamp=pytest.approx(1234567890)
+        )
+E       NameError: name 'ScanType' is not defined
+
+tests/unit/test_gpt5_p5_security.py:382: NameError
+_________ TestSecurityComplianceScanner.test_pci_dss_compliance_check __________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f6c6d0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1511ae8b0>
+
+    @pytest.mark.asyncio
+    async def test_pci_dss_compliance_check(self, security_scanner):
+        """Test PCI-DSS compliance framework validation"""
+        # Create issues related to payment card data
+        issues = [
+            SecurityVulnerability(
+                id="pci_vuln_1",
+                title="Hardcoded Payment Key",
+                vulnerability_type=VulnerabilityType.HARDCODED_SECRETS,
+                severity=SecurityLevel.CRITICAL,
+                description="Hardcoded payment API key",
+                line_number=5,
+                code_snippet="payment_api_key = 'pk_test_123456'"
+            ),
+            SecurityVulnerability(
+                id="pci_vuln_2",
+                title="Weak Encryption",
+                vulnerability_type=VulnerabilityType.INSECURE_CRYPTO,
+                severity=SecurityLevel.HIGH,
+                description="Weak encryption for payment data",
+                line_number=20,
+                code_snippet="hashlib.md5(credit_card_number)"
+            )
+        ]
+    
+        scan_result = SecurityScanResult(
+            scan_id="test_scan_pci",
+>           scan_type=ScanType.CODE_VULNERABILITY,
+            target="/test/payment.py",
+            start_time=datetime.utcnow(),
+            end_time=datetime.utcnow(),
+            vulnerabilities=issues,
+            scan_timestamp=pytest.approx(1234567890)
+        )
+E       NameError: name 'ScanType' is not defined
+
+tests/unit/test_gpt5_p5_security.py:427: NameError
+______________ TestSecurityComplianceScanner.test_risk_assessment ______________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f6c910>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1511bcd00>
+
+    @pytest.mark.asyncio
+    async def test_risk_assessment(self, security_scanner):
+        """Test security risk assessment calculation"""
+        # Create issues with different severity levels
+        issues = [
+            SecurityVulnerability(
+                id="risk_vuln_1",
+                title="Hardcoded Secrets",
+                vulnerability_type=VulnerabilityType.HARDCODED_SECRETS,
+                severity=SecurityLevel.CRITICAL,
+                description="Critical secret exposure"
+            ),
+            SecurityVulnerability(
+                id="risk_vuln_2",
+                title="SQL Injection",
+                vulnerability_type=VulnerabilityType.SQL_INJECTION,
+                severity=SecurityLevel.HIGH,
+                description="SQL injection risk"
+            ),
+            SecurityVulnerability(
+                id="risk_vuln_3",
+                title="XSS",
+                vulnerability_type=VulnerabilityType.XSS,
+                severity=SecurityLevel.MEDIUM,
+                description="XSS vulnerability"
+            ),
+            SecurityVulnerability(
+                id="risk_vuln_4",
+                title="Weak Random",
+                vulnerability_type=VulnerabilityType.WEAK_RANDOM,
+                severity=SecurityLevel.LOW,
+                description="Weak random number generation"
+            )
+        ]
+    
+        scan_result = SecurityScanResult(
+            scan_id="test_scan_risk",
+>           scan_type=ScanType.CODE_VULNERABILITY,
+            target="/test/risk_assessment.py",
+            start_time=datetime.utcnow(),
+            end_time=datetime.utcnow(),
+            vulnerabilities=issues,
+            scan_timestamp=pytest.approx(1234567890)
+        )
+E       NameError: name 'ScanType' is not defined
+
+tests/unit/test_gpt5_p5_security.py:482: NameError
+________ TestSecurityComplianceScanner.test_security_report_generation _________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150f85d60>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1511d22b0>
+tmp_path = PosixPath('/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pytest-5/test_security_report_generatio0')
+
+    @pytest.mark.asyncio
+    async def test_security_report_generation(self, security_scanner, tmp_path):
+        """Test comprehensive security report generation"""
+        # Create multiple scan results
+        scan_results = [
+            SecurityScanResult(
+                scan_id="test_scan_report_1",
+>               scan_type=ScanType.CODE_VULNERABILITY,
+                target="/app/main.py",
+                start_time=datetime.utcnow(),
+                end_time=datetime.utcnow(),
+                vulnerabilities=[
+                    SecurityVulnerability(
+                        id="report_vuln_1",
+                        title="SQL Injection",
+                        vulnerability_type=VulnerabilityType.SQL_INJECTION,
+                        severity=SecurityLevel.HIGH,
+                        description="SQL injection in user query"
+                    )
+                ],
+                scan_timestamp=1234567890
+            ),
+            SecurityScanResult(
+                scan_id="test_scan_report_2",
+                scan_type=ScanType.CODE_VULNERABILITY,
+                target="/app/utils.py",
+                start_time=datetime.utcnow(),
+                end_time=datetime.utcnow(),
+                vulnerabilities=[
+                    SecurityVulnerability(
+                        id="report_vuln_2",
+                        title="Hardcoded Secrets",
+                        vulnerability_type=VulnerabilityType.HARDCODED_SECRETS,
+                        severity=SecurityLevel.CRITICAL,
+                        description="API key hardcoded"
+                    )
+                ],
+                scan_timestamp=1234567890
+            )
+        ]
+E       NameError: name 'ScanType' is not defined
+
+tests/unit/test_gpt5_p5_security.py:507: NameError
+__________ TestSecurityComplianceScanner.test_false_positive_handling __________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150ed4cd0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1511d20a0>
+
+    @pytest.mark.asyncio
+    async def test_false_positive_handling(self, security_scanner):
+        """Test handling of false positives in security scanning"""
+        # Code that might trigger false positives
+        code_samples = [
+            '# This is not a real API key: "sk-test-example"',
+            'test_query = "SELECT * FROM test_table WHERE id = 1"',  # Static query
+            'example_html = "<div>Safe static content</div>"',
+            'hash_comment = "Use SHA256 instead of MD5 for production"'
+        ]
+    
+        total_false_positives = 0
+    
+        for code in code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+    
+            # These should ideally not trigger or be marked as low confidence
+            for issue in issues:
+>               if issue.confidence_level and issue.confidence_level < 0.5:
+E               AttributeError: 'SecurityVulnerability' object has no attribute 'confidence_level'
+
+tests/unit/test_gpt5_p5_security.py:584: AttributeError
+_____________ TestSecurityComplianceScanner.test_scan_performance ______________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150ed4610>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x15104bee0>
+tmp_path = PosixPath('/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pytest-5/test_scan_performance0')
+
+        @pytest.mark.asyncio
+        async def test_scan_performance(self, security_scanner, tmp_path):
+            """Test scanning performance with larger codebase"""
+            import time
+    
+            # Create multiple files with various vulnerabilities
+            num_files = 20
+            for i in range(num_files):
+                test_file = tmp_path / f"test_file_{i}.py"
+                test_file.write_text(f'''
+    # File {i}
+    api_key = "sk-test-{i}"
+    def query_{i}(user_id):
+        return f"SELECT * FROM table_{i} WHERE id = {{user_id}}"
+    
+    def render_{i}(data):
+        return f"<div>{{data}}</div>"
+    ''')
+    
+            # Measure scan performance
+            start_time = time.time()
+            scan_results = await security_scanner.scan_directory(str(tmp_path))
+            scan_time = time.time() - start_time
+    
+            # Performance assertions
+            assert len(scan_results) == num_files
+            assert scan_time < 30.0  # Should complete within 30 seconds
+    
+            # Verify all files have detected issues
+            total_issues = sum(len(result.vulnerabilities) for result in scan_results)
+>           assert total_issues >= num_files * 3  # At least 3 issues per file
+E           assert 40 >= (20 * 3)
+
+tests/unit/test_gpt5_p5_security.py:649: AssertionError
+____________ TestSecurityComplianceScanner.test_concurrent_scanning ____________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x150ed48e0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1511bc400>
+tmp_path = PosixPath('/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pytest-5/test_concurrent_scanning0')
+
+        @pytest.mark.asyncio
+        async def test_concurrent_scanning(self, security_scanner, tmp_path):
+            """Test concurrent file scanning"""
+            # Create test files
+            test_files = []
+            for i in range(5):
+                test_file = tmp_path / f"concurrent_test_{i}.py"
+                test_file.write_text(f'''
+    secret_{i} = "hardcoded_secret_{i}"
+    def vulnerable_query_{i}(id):
+        return f"SELECT * FROM table WHERE id = {{id}}"
+    ''')
+                test_files.append(str(test_file))
+    
+            # Scan files concurrently
+            scan_tasks = [security_scanner.scan_file(file_path) for file_path in test_files]
+            scan_results = await asyncio.gather(*scan_tasks)
+    
+            # Verify all scans completed successfully
+            assert len(scan_results) == 5
+            for result in scan_results:
+>               assert len(result.vulnerabilities) >= 2  # At least 2 issues per file
+E               AssertionError: assert 1 >= 2
+E                +  where 1 = len([SecurityVulnerability(id='SQL_INJECTION_/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pyte...date|delete|union|drop)\\s+.*'], detected_at=datetime.datetime(2025, 11, 29, 13, 38, 29, 40112), false_positive=False)])
+E                +    where [SecurityVulnerability(id='SQL_INJECTION_/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pyte...date|delete|union|drop)\\s+.*'], detected_at=datetime.datetime(2025, 11, 29, 13, 38, 29, 40112), false_positive=False)] = SecurityScanResult(scan_id='74936331725edbf2538537668e77f73d', scan_type=<ScanType.CODE_VULNERABILITY: 1>, target='/pr...ability_types': ['SQL_INJECTION'], 'severity_breakdown': {'critical': 0, 'high': 1, 'medium': 0, 'low': 0, 'info': 0}}).vulnerabilities
+
+tests/unit/test_gpt5_p5_security.py:672: AssertionError
+___ TestKnowledgeTransferAndLearning.test_cross_project_pattern_recognition ____
+
+self = <test_gpt5_p7_knowledge.TestKnowledgeTransferAndLearning object at 0x150ef5430>
+knowledge_graph = <test_gpt5_p7_knowledge.MockKnowledgeGraphManager object at 0x193b40100>
+
+    @pytest.mark.asyncio
+    async def test_cross_project_pattern_recognition(self, knowledge_graph):
+        """Test recognition of patterns across different projects"""
+        await knowledge_graph.initialize()
+    
+        # Simulate entities from different projects but similar patterns
+        project_patterns = [
+            {
+                "project": "project_A",
+                "pattern": "authentication_handler",
+                "entities": ["login_function", "validate_user", "generate_token"]
+            },
+            {
+                "project": "project_B",
+                "pattern": "authentication_handler",
+                "entities": ["authenticate", "check_credentials", "create_session"]
+            }
+        ]
+    
+        all_entities = []
+        for project_data in project_patterns:
+            for entity_name in project_data["entities"]:
+                entity = KnowledgeEntity(
+                    entity_id=f"{project_data['project']}_{entity_name}",
+                    name=entity_name,
+                    entity_type=KnowledgeEntityType.FUNCTION,
+                    properties={
+                        "project": project_data['project'],
+                        "pattern": project_data['pattern'],
+                        "domain": "authentication"
+                    },
+                    source_file=f"{project_data['project']}/auth.py"
+                )
+                await knowledge_graph.add_entity(entity)
+                all_entities.append(entity)
+    
+        # Find cross-project patterns
+        patterns = await knowledge_graph.find_patterns("code_pattern")
+    
+        # Should identify authentication pattern across projects
+        auth_patterns = [p for p in patterns if "auth" in p.get('description', '').lower()]
+>       assert len(auth_patterns) > 0
+E       assert 0 > 0
+E        +  where 0 = len([])
+
+tests/unit/test_gpt5_p7_knowledge.py:1653: AssertionError
+____ TestKnowledgeTransferAndLearning.test_solution_pattern_generalization _____
+
+self = <test_gpt5_p7_knowledge.TestKnowledgeTransferAndLearning object at 0x150f07790>
+knowledge_graph = <test_gpt5_p7_knowledge.MockKnowledgeGraphManager object at 0x178207bb0>
+
+    @pytest.mark.asyncio
+    async def test_solution_pattern_generalization(self, knowledge_graph):
+        """Test generalization of solution patterns from specific instances"""
+        await knowledge_graph.initialize()
+    
+        # Create specific solution instances
+        solution_instances = [
+            {
+                "name": "sql_injection_fix_1",
+                "problem": "SQL injection vulnerability",
+                "solution": "parameterized_queries",
+                "context": "user_authentication"
+            },
+            {
+                "name": "sql_injection_fix_2",
+                "problem": "SQL injection vulnerability",
+                "solution": "parameterized_queries",
+                "context": "data_retrieval"
+            },
+            {
+                "name": "sql_injection_fix_3",
+                "problem": "SQL injection vulnerability",
+                "solution": "input_validation_and_parameterized_queries",
+                "context": "reporting_system"
+            }
+        ]
+    
+        for instance in solution_instances:
+            # Create problem entity
+            problem_entity = KnowledgeEntity(
+                entity_id=f"problem_{instance['name']}",
+                name=f"problem_{instance['problem']}_{instance['context']}",
+                entity_type=KnowledgeEntityType.BUG,
+                properties={
+                    "problem_type": instance['problem'],
+                    "context": instance['context']
+                }
+            )
+            await knowledge_graph.add_entity(problem_entity)
+    
+            # Create solution entity
+            solution_entity = KnowledgeEntity(
+                entity_id=f"solution_{instance['name']}",
+                name=instance['name'],
+                entity_type=KnowledgeEntityType.SOLUTION,
+                properties={
+                    "solution_approach": instance['solution'],
+                    "context": instance['context']
+                }
+            )
+            await knowledge_graph.add_entity(solution_entity)
+    
+            # Create fixes relationship
+            fixes_rel = KnowledgeRelationship(
+                relationship_id=f"fixes_{instance['name']}",
+                source_entity_id=solution_entity.entity_id,
+                target_entity_id=problem_entity.entity_id,
+                relationship_type=RelationshipType.FIXES,
+                properties={"effectiveness": "high"},
+                strength=0.9,
+                confidence=0.95
+            )
+            await knowledge_graph.add_relationship(fixes_rel)
+    
+        # Find generalized pattern
+        patterns = await knowledge_graph.find_patterns("code_pattern")
+    
+        # Should identify common SQL injection solution pattern
+        sql_patterns = [p for p in patterns
+                       if "sql" in p.get('description', '').lower() or
+                          len(p.get('instances', [])) >= 3]
+>       assert len(sql_patterns) > 0
+E       assert 0 > 0
+E        +  where 0 = len([])
+
+tests/unit/test_gpt5_p7_knowledge.py:1783: AssertionError
+=============================== warnings summary ===============================
+venv/lib/python3.9/site-packages/jupyter_client/connect.py:22
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/jupyter_client/connect.py:22: DeprecationWarning: Jupyter is migrating its paths to use standard platformdirs
+  given by the platformdirs library.  To remove this warning and
+  see the appropriate new directories, set the environment variable
+  `JUPYTER_PLATFORM_DIRS=1` and then run `jupyter --paths`.
+  The use of platformdirs will be the default in `jupyter_core` v6
+    from jupyter_core.paths import jupyter_data_dir, jupyter_runtime_dir, secure_write
+
+venv/lib/python3.9/site-packages/torch/nn/modules/transformer.py:20
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/torch/nn/modules/transformer.py:20: UserWarning: Failed to initialize NumPy: _ARRAY_API not found (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:84.)
+    device: torch.device = torch.device(torch._C._get_default_device()),  # torch.device('cpu'),
+
+config/settings.py:19
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:19: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEBUG: bool = Field(default=False, env="DEBUG")
+
+config/settings.py:22
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:22: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
+
+config/settings.py:23
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:23: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_PORT: int = Field(default=8000, env="API_PORT")
+
+config/settings.py:24
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:24: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_WORKERS: int = Field(default=4, env="API_WORKERS")
+
+config/settings.py:25
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:25: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CORS_ORIGINS: List[str] = Field(
+
+config/settings.py:31
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:31: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_URL: str = Field(
+
+config/settings.py:35
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:35: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_POOL_SIZE: int = Field(default=20, env="DATABASE_POOL_SIZE")
+
+config/settings.py:36
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:36: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_MAX_OVERFLOW: int = Field(default=10, env="DATABASE_MAX_OVERFLOW")
+
+config/settings.py:39
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:39: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
+
+config/settings.py:40
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:40: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_MAX_CONNECTIONS: int = Field(default=50, env="REDIS_MAX_CONNECTIONS")
+
+config/settings.py:42
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:42: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("DATABASE_URL", pre=True, always=True)
+
+config/settings.py:55
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:55: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_HOST: str = Field(default="localhost", env="CHROMADB_HOST")
+
+config/settings.py:56
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:56: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PORT: int = Field(default=8000, env="CHROMADB_PORT")
+
+config/settings.py:57
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:57: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PATH: str = Field(
+
+config/settings.py:63
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:63: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
+
+config/settings.py:64
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:64: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    ANTHROPIC_API_KEY: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
+
+config/settings.py:65
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:65: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OLLAMA_BASE_URL: str = Field(
+
+config/settings.py:71
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:71: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_LLM_PROVIDER: str = Field(default="openai", env="DEFAULT_LLM_PROVIDER")
+
+config/settings.py:72
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:72: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_MODEL: str = Field(default="gpt-5-chat-latest", env="DEFAULT_MODEL")
+
+config/settings.py:73
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:73: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_TEMPERATURE: float = Field(default=0.7, env="LLM_TEMPERATURE")
+
+config/settings.py:74
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:74: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_MAX_TOKENS: int = Field(default=2000, env="LLM_MAX_TOKENS")
+
+config/settings.py:77
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:77: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_TEST_COVERAGE: float = Field(default=95.0, env="TARGET_TEST_COVERAGE")
+
+config/settings.py:78
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:78: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_PERFORMANCE_SCORE: float = Field(
+
+config/settings.py:82
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:82: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_DOCUMENTATION_COVERAGE: float = Field(
+
+config/settings.py:86
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:86: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_CODE_QUALITY_SCORE: float = Field(
+
+config/settings.py:90
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:90: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_SECURITY_SCORE: float = Field(default=95.0, env="TARGET_SECURITY_SCORE")
+
+config/settings.py:91
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:91: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_USER_SATISFACTION: float = Field(
+
+config/settings.py:97
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:97: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    MAX_AGENT_RETRIES: int = Field(default=3, env="MAX_AGENT_RETRIES")
+
+config/settings.py:98
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:98: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    AGENT_TIMEOUT_SECONDS: int = Field(default=300, env="AGENT_TIMEOUT_SECONDS")
+
+config/settings.py:99
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:99: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHECKPOINT_INTERVAL_HOURS: int = Field(
+
+config/settings.py:105
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:105: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    PERSISTENCE_DIR: Path = Field(
+
+config/settings.py:109
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:109: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LOGS_DIR: Path = Field(default=Path("logs"), env="LOGS_DIR")
+
+config/settings.py:112
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:112: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    SECRET_KEY: str = Field(
+
+config/settings.py:116
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:116: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")
+
+config/settings.py:117
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:117: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_EXPIRATION_MINUTES: int = Field(
+
+config/settings.py:123
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:123: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    RATE_LIMIT_PER_MINUTE: int = Field(default=100, env="RATE_LIMIT_PER_MINUTE")
+
+config/settings.py:125
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:125: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("CORS_ORIGINS", pre=True)
+
+config/settings.py:132
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:132: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("PERSISTENCE_DIR", "LOGS_DIR", pre=True)
+
+config/settings.py:13
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:13: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class Settings(BaseSettings):
+
+tests/unit/test_gpt5_p4_memory.py:25
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:25: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p4_memory.py:26
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:26: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p4_memory.py:27
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:27: PytestUnknownMarkWarning: Unknown pytest.mark.memory - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.memory
+
+tests/unit/test_gpt5_p4_memory.py:631
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:631: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p4_memory.py:632
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:632: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p4_memory.py:633
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:633: PytestUnknownMarkWarning: Unknown pytest.mark.memory - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.memory
+
+tests/unit/test_gpt5_p4_memory.py:715
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:715: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p4_memory.py:716
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:716: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p4_memory.py:717
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:717: PytestUnknownMarkWarning: Unknown pytest.mark.memory - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.memory
+
+tests/unit/test_gpt5_p5_security.py:24
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:24: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p5_security.py:25
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:25: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p5_security.py:26
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:26: PytestUnknownMarkWarning: Unknown pytest.mark.security - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.security
+
+tests/unit/test_gpt5_p5_security.py:675
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:675: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p5_security.py:676
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:676: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p5_security.py:677
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:677: PytestUnknownMarkWarning: Unknown pytest.mark.security - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.security
+
+tests/unit/test_gpt5_p5_security.py:725
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:725: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p5_security.py:726
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:726: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p5_security.py:727
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:727: PytestUnknownMarkWarning: Unknown pytest.mark.security - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.security
+
+tests/unit/test_gpt5_p5_security.py:748
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:748: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p5_security.py:749
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:749: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p5_security.py:750
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:750: PytestUnknownMarkWarning: Unknown pytest.mark.security - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.security
+
+tests/conftest.py:502
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/conftest.py:502: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    item.add_marker(pytest.mark.unit)
+
+tests/unit/test_gpt5_p10_causal.py::TestCausalInferenceMethods::test_causal_methods_from_test_data
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/threadpoolctl.py:1226: RuntimeWarning: 
+  Found Intel OpenMP ('libiomp') and LLVM OpenMP ('libomp') loaded at
+  the same time. Both libraries are known to be incompatible and this
+  can cause random crashes or deadlocks on Linux when loaded in the
+  same Python program.
+  Using threadpoolctl may cause crashes or deadlocks. For more
+  information and possible workarounds, please see
+      https://github.com/joblib/threadpoolctl/blob/master/multiple_openmp.md
+  
+    warnings.warn(msg, RuntimeWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_sql_injection_detection
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_xss_vulnerability_detection
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_hardcoded_secrets_detection
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_insecure_crypto_detection
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_path_traversal_detection
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_scan_file
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_scan_directory
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_owasp_compliance_check
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_gdpr_compliance_check
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_pci_dss_compliance_check
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_risk_assessment
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_security_report_generation
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_false_positive_handling
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_scan_performance
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_concurrent_scanning
+FAILED tests/unit/test_gpt5_p7_knowledge.py::TestKnowledgeTransferAndLearning::test_cross_project_pattern_recognition
+FAILED tests/unit/test_gpt5_p7_knowledge.py::TestKnowledgeTransferAndLearning::test_solution_pattern_generalization
+=========== 17 failed, 102 passed, 64 warnings in 231.88s (0:03:51) ============

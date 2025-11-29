@@ -775,6 +775,7 @@ def sample_infrastructure_spec():
     )
 
 
+@pytest.mark.gpt5
 class TestDeploymentOrchestrator:
     """Comprehensive tests for Deployment Orchestrator"""
 
@@ -1268,6 +1269,7 @@ class TestDeploymentOrchestrator:
         assert validation["security_validation"]["status"] == "passed"
 
 
+@pytest.mark.gpt5
 class TestDeploymentPipelineIntegration:
     """Tests for deployment pipeline integration scenarios"""
 

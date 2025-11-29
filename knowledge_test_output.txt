@@ -1,0 +1,428 @@
+/Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.1.1, pluggy-1.6.0
+rootdir: /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder
+configfile: pytest.ini
+plugins: asyncio-0.23.5, anyio-4.12.0, langsmith-0.4.37, cov-4.1.0
+asyncio: mode=strict
+collected 26 items
+
+tests/unit/test_gpt5_p7_knowledge.py .................F.F...F.F          [100%]
+
+=================================== FAILURES ===================================
+______ TestKnowledgeGraphManager.test_multi_depth_relationship_traversal _______
+
+self = <test_gpt5_p7_knowledge.TestKnowledgeGraphManager object at 0x14d0e4940>
+knowledge_graph = <test_gpt5_p7_knowledge.MockKnowledgeGraphManager object at 0x18facb0d0>
+
+    @pytest.mark.asyncio
+    async def test_multi_depth_relationship_traversal(self, knowledge_graph):
+        """Test multi-depth relationship traversal"""
+        await knowledge_graph.initialize()
+    
+        # Create a chain of entities: A -> B -> C
+        entities = []
+        for i in range(3):
+            entity = KnowledgeEntity(
+                entity_id=f"entity_{chr(65+i)}",  # A, B, C
+                name=f"Entity {chr(65+i)}",
+                entity_type=KnowledgeEntityType.FUNCTION,
+                properties={}
+            )
+            entities.append(entity)
+            await knowledge_graph.add_entity(entity)
+    
+        # Create relationships: A depends on B, B depends on C
+        rel1 = KnowledgeRelationship(
+            relationship_id="rel_AB",
+            source_entity_id="entity_A",
+            target_entity_id="entity_B",
+            relationship_type=RelationshipType.DEPENDS_ON,
+            properties={},
+            strength=0.8,
+            confidence=0.9
+        )
+        rel2 = KnowledgeRelationship(
+            relationship_id="rel_BC",
+            source_entity_id="entity_B",
+            target_entity_id="entity_C",
+            relationship_type=RelationshipType.DEPENDS_ON,
+            properties={},
+            strength=0.8,
+            confidence=0.9
+        )
+    
+        await knowledge_graph.add_relationship(rel1)
+        await knowledge_graph.add_relationship(rel2)
+    
+        # Test depth 1 traversal from A
+        related_depth1 = await knowledge_graph.get_related_entities("entity_A", max_depth=1)
+>       assert len(related_depth1) == 1  # Should find B only
+E       AssertionError: assert 2 == 1
+E        +  where 2 = len([(KnowledgeEntity(entity_id='entity_B', name='Entity B', entity_type=<KnowledgeEntityType.FUNCTION: 'function'>, prope...nds_on'>, properties={}, strength=0.8, confidence=0.9, created_at=datetime.datetime(2025, 11, 29, 15, 14, 45, 81367)))])
+
+tests/unit/test_gpt5_p7_knowledge.py:1440: AssertionError
+_________ TestKnowledgeGraphManager.test_large_scale_graph_performance _________
+
+self = <test_gpt5_p7_knowledge.TestKnowledgeGraphManager object at 0x14d0e4e80>
+knowledge_graph = <test_gpt5_p7_knowledge.MockKnowledgeGraphManager object at 0x18fbb0a90>
+
+    @pytest.mark.asyncio
+    async def test_large_scale_graph_performance(self, knowledge_graph):
+        """Test performance with larger scale knowledge graph"""
+        await knowledge_graph.initialize()
+    
+        # Add many entities
+        entity_count = 100
+        start_time = asyncio.get_event_loop().time()
+    
+        for i in range(entity_count):
+            entity = KnowledgeEntity(
+                entity_id=f"perf_entity_{i:04d}",
+                name=f"PerformanceEntity{i}",
+                entity_type=KnowledgeEntityType.FUNCTION if i % 2 == 0 else KnowledgeEntityType.CLASS,
+                properties={"index": i, "group": i // 10}
+            )
+            await knowledge_graph.add_entity(entity)
+    
+        entity_creation_time = asyncio.get_event_loop().time() - start_time
+    
+        # Test search performance
+        search_start = asyncio.get_event_loop().time()
+        results = await knowledge_graph.semantic_search("PerformanceEntity50", top_k=10)
+        search_time = asyncio.get_event_loop().time() - search_start
+    
+        # Verify results
+        assert len(knowledge_graph.entities) == entity_count
+        assert len(results) > 0
+    
+        # Performance assertions (adjust thresholds as needed)
+>       assert entity_creation_time < 5.0  # Should create 100 entities in under 5 seconds
+E       assert 244.77949268600003 < 5.0
+
+tests/unit/test_gpt5_p7_knowledge.py:1499: AssertionError
+___ TestKnowledgeTransferAndLearning.test_cross_project_pattern_recognition ____
+
+self = <test_gpt5_p7_knowledge.TestKnowledgeTransferAndLearning object at 0x14d0e4310>
+knowledge_graph = <test_gpt5_p7_knowledge.MockKnowledgeGraphManager object at 0x160fc8460>
+
+    @pytest.mark.asyncio
+    async def test_cross_project_pattern_recognition(self, knowledge_graph):
+        """Test recognition of patterns across different projects"""
+        await knowledge_graph.initialize()
+    
+        # Simulate entities from different projects but similar patterns
+        project_patterns = [
+            {
+                "project": "project_A",
+                "pattern": "authentication_handler",
+                "entities": ["login_function", "validate_user", "generate_token"]
+            },
+            {
+                "project": "project_B",
+                "pattern": "authentication_handler",
+                "entities": ["authenticate", "check_credentials", "create_session"]
+            }
+        ]
+    
+        all_entities = []
+        for project_data in project_patterns:
+            for entity_name in project_data["entities"]:
+                entity = KnowledgeEntity(
+                    entity_id=f"{project_data['project']}_{entity_name}",
+                    name=entity_name,
+                    entity_type=KnowledgeEntityType.FUNCTION,
+                    properties={
+                        "project": project_data['project'],
+                        "pattern": project_data['pattern'],
+                        "domain": "authentication"
+                    },
+                    source_file=f"{project_data['project']}/auth.py"
+                )
+                await knowledge_graph.add_entity(entity)
+                all_entities.append(entity)
+    
+        # Find cross-project patterns
+        patterns = await knowledge_graph.find_patterns("code_pattern")
+    
+        # Should identify authentication pattern across projects
+        auth_patterns = [p for p in patterns if "auth" in p.get('description', '').lower()]
+>       assert len(auth_patterns) > 0
+E       assert 0 > 0
+E        +  where 0 = len([])
+
+tests/unit/test_gpt5_p7_knowledge.py:1646: AssertionError
+____ TestKnowledgeTransferAndLearning.test_solution_pattern_generalization _____
+
+self = <test_gpt5_p7_knowledge.TestKnowledgeTransferAndLearning object at 0x14d0ed3d0>
+knowledge_graph = <test_gpt5_p7_knowledge.MockKnowledgeGraphManager object at 0x14d7a0c40>
+
+    @pytest.mark.asyncio
+    async def test_solution_pattern_generalization(self, knowledge_graph):
+        """Test generalization of solution patterns from specific instances"""
+        await knowledge_graph.initialize()
+    
+        # Create specific solution instances
+        solution_instances = [
+            {
+                "name": "sql_injection_fix_1",
+                "problem": "SQL injection vulnerability",
+                "solution": "parameterized_queries",
+                "context": "user_authentication"
+            },
+            {
+                "name": "sql_injection_fix_2",
+                "problem": "SQL injection vulnerability",
+                "solution": "parameterized_queries",
+                "context": "data_retrieval"
+            },
+            {
+                "name": "sql_injection_fix_3",
+                "problem": "SQL injection vulnerability",
+                "solution": "input_validation_and_parameterized_queries",
+                "context": "reporting_system"
+            }
+        ]
+    
+        for instance in solution_instances:
+            # Create problem entity
+            problem_entity = KnowledgeEntity(
+                entity_id=f"problem_{instance['name']}",
+                name=f"problem_{instance['problem']}_{instance['context']}",
+                entity_type=KnowledgeEntityType.BUG,
+                properties={
+                    "problem_type": instance['problem'],
+                    "context": instance['context']
+                }
+            )
+            await knowledge_graph.add_entity(problem_entity)
+    
+            # Create solution entity
+            solution_entity = KnowledgeEntity(
+                entity_id=f"solution_{instance['name']}",
+                name=instance['name'],
+                entity_type=KnowledgeEntityType.SOLUTION,
+                properties={
+                    "solution_approach": instance['solution'],
+                    "context": instance['context']
+                }
+            )
+            await knowledge_graph.add_entity(solution_entity)
+    
+            # Create fixes relationship
+            fixes_rel = KnowledgeRelationship(
+                relationship_id=f"fixes_{instance['name']}",
+                source_entity_id=solution_entity.entity_id,
+                target_entity_id=problem_entity.entity_id,
+                relationship_type=RelationshipType.FIXES,
+                properties={"effectiveness": "high"},
+                strength=0.9,
+                confidence=0.95
+            )
+            await knowledge_graph.add_relationship(fixes_rel)
+    
+        # Find generalized pattern
+        patterns = await knowledge_graph.find_patterns("code_pattern")
+    
+        # Should identify common SQL injection solution pattern
+        sql_patterns = [p for p in patterns
+                       if "sql" in p.get('description', '').lower() or
+                          len(p.get('instances', [])) >= 3]
+>       assert len(sql_patterns) > 0
+E       assert 0 > 0
+E        +  where 0 = len([])
+
+tests/unit/test_gpt5_p7_knowledge.py:1776: AssertionError
+=============================== warnings summary ===============================
+venv/lib/python3.9/site-packages/jupyter_client/connect.py:22
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/jupyter_client/connect.py:22: DeprecationWarning: Jupyter is migrating its paths to use standard platformdirs
+  given by the platformdirs library.  To remove this warning and
+  see the appropriate new directories, set the environment variable
+  `JUPYTER_PLATFORM_DIRS=1` and then run `jupyter --paths`.
+  The use of platformdirs will be the default in `jupyter_core` v6
+    from jupyter_core.paths import jupyter_data_dir, jupyter_runtime_dir, secure_write
+
+venv/lib/python3.9/site-packages/torch/nn/modules/transformer.py:20
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/torch/nn/modules/transformer.py:20: UserWarning: Failed to initialize NumPy: _ARRAY_API not found (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:84.)
+    device: torch.device = torch.device(torch._C._get_default_device()),  # torch.device('cpu'),
+
+config/settings.py:19
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:19: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEBUG: bool = Field(default=False, env="DEBUG")
+
+config/settings.py:22
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:22: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
+
+config/settings.py:23
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:23: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_PORT: int = Field(default=8000, env="API_PORT")
+
+config/settings.py:24
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:24: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_WORKERS: int = Field(default=4, env="API_WORKERS")
+
+config/settings.py:25
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:25: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CORS_ORIGINS: List[str] = Field(
+
+config/settings.py:31
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:31: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_URL: str = Field(
+
+config/settings.py:35
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:35: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_POOL_SIZE: int = Field(default=20, env="DATABASE_POOL_SIZE")
+
+config/settings.py:36
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:36: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_MAX_OVERFLOW: int = Field(default=10, env="DATABASE_MAX_OVERFLOW")
+
+config/settings.py:39
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:39: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
+
+config/settings.py:40
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:40: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_MAX_CONNECTIONS: int = Field(default=50, env="REDIS_MAX_CONNECTIONS")
+
+config/settings.py:42
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:42: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("DATABASE_URL", pre=True, always=True)
+
+config/settings.py:55
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:55: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_HOST: str = Field(default="localhost", env="CHROMADB_HOST")
+
+config/settings.py:56
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:56: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PORT: int = Field(default=8000, env="CHROMADB_PORT")
+
+config/settings.py:57
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:57: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PATH: str = Field(
+
+config/settings.py:63
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:63: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
+
+config/settings.py:64
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:64: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    ANTHROPIC_API_KEY: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
+
+config/settings.py:65
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:65: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OLLAMA_BASE_URL: str = Field(
+
+config/settings.py:71
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:71: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_LLM_PROVIDER: str = Field(default="openai", env="DEFAULT_LLM_PROVIDER")
+
+config/settings.py:72
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:72: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_MODEL: str = Field(default="gpt-5-chat-latest", env="DEFAULT_MODEL")
+
+config/settings.py:73
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:73: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_TEMPERATURE: float = Field(default=0.7, env="LLM_TEMPERATURE")
+
+config/settings.py:74
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:74: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_MAX_TOKENS: int = Field(default=2000, env="LLM_MAX_TOKENS")
+
+config/settings.py:77
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:77: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_TEST_COVERAGE: float = Field(default=95.0, env="TARGET_TEST_COVERAGE")
+
+config/settings.py:78
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:78: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_PERFORMANCE_SCORE: float = Field(
+
+config/settings.py:82
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:82: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_DOCUMENTATION_COVERAGE: float = Field(
+
+config/settings.py:86
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:86: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_CODE_QUALITY_SCORE: float = Field(
+
+config/settings.py:90
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:90: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_SECURITY_SCORE: float = Field(default=95.0, env="TARGET_SECURITY_SCORE")
+
+config/settings.py:91
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:91: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_USER_SATISFACTION: float = Field(
+
+config/settings.py:97
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:97: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    MAX_AGENT_RETRIES: int = Field(default=3, env="MAX_AGENT_RETRIES")
+
+config/settings.py:98
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:98: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    AGENT_TIMEOUT_SECONDS: int = Field(default=300, env="AGENT_TIMEOUT_SECONDS")
+
+config/settings.py:99
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:99: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHECKPOINT_INTERVAL_HOURS: int = Field(
+
+config/settings.py:105
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:105: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    PERSISTENCE_DIR: Path = Field(
+
+config/settings.py:109
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:109: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LOGS_DIR: Path = Field(default=Path("logs"), env="LOGS_DIR")
+
+config/settings.py:112
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:112: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    SECRET_KEY: str = Field(
+
+config/settings.py:116
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:116: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")
+
+config/settings.py:117
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:117: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_EXPIRATION_MINUTES: int = Field(
+
+config/settings.py:123
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:123: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    RATE_LIMIT_PER_MINUTE: int = Field(default=100, env="RATE_LIMIT_PER_MINUTE")
+
+config/settings.py:125
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:125: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("CORS_ORIGINS", pre=True)
+
+config/settings.py:132
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:132: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("PERSISTENCE_DIR", "LOGS_DIR", pre=True)
+
+config/settings.py:13
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:13: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class Settings(BaseSettings):
+
+tests/conftest.py:506
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/conftest.py:506: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    item.add_marker(pytest.mark.unit)
+
+tests/unit/test_gpt5_p7_knowledge.py::TestKnowledgeGraphManager::test_knowledge_graph_initialization
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/pytest_asyncio/plugin.py:769: DeprecationWarning: The event_loop fixture provided by pytest-asyncio has been redefined in
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/conftest.py:49
+  Replacing the event_loop fixture with a custom implementation is deprecated
+  and will lead to errors in the future.
+  If you want to request an asyncio event loop with a scope other than function
+  scope, use the "scope" argument to the asyncio mark when marking the tests.
+  If you want to return different types of event loops, use the event_loop_policy
+  fixture.
+  
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_gpt5_p7_knowledge.py::TestKnowledgeGraphManager::test_multi_depth_relationship_traversal
+FAILED tests/unit/test_gpt5_p7_knowledge.py::TestKnowledgeGraphManager::test_large_scale_graph_performance
+FAILED tests/unit/test_gpt5_p7_knowledge.py::TestKnowledgeTransferAndLearning::test_cross_project_pattern_recognition
+FAILED tests/unit/test_gpt5_p7_knowledge.py::TestKnowledgeTransferAndLearning::test_solution_pattern_generalization
+============ 4 failed, 22 passed, 43 warnings in 459.49s (0:07:39) =============

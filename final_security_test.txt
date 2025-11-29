@@ -1,0 +1,373 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.1.1, pluggy-1.6.0 -- /Library/Developer/CommandLineTools/usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder
+configfile: pytest.ini
+plugins: asyncio-0.23.5, anyio-4.12.0, langsmith-0.4.37, cov-4.1.0
+asyncio: mode=strict
+collecting ... collected 23 items
+
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_scanner_initialization PASSED [  4%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_sql_injection_detection PASSED [  8%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_xss_vulnerability_detection PASSED [ 13%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_hardcoded_secrets_detection PASSED [ 17%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_insecure_crypto_detection PASSED [ 21%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_path_traversal_detection FAILED [ 26%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_scan_file PASSED [ 30%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_scan_directory PASSED [ 34%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_owasp_compliance_check PASSED [ 39%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_gdpr_compliance_check PASSED [ 43%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_pci_dss_compliance_check PASSED [ 47%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_risk_assessment PASSED [ 52%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_security_report_generation FAILED [ 56%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_false_positive_handling PASSED [ 60%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_vulnerability_pattern_updates PASSED [ 65%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_scan_performance PASSED [ 69%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_concurrent_scanning PASSED [ 73%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityVulnerability::test_security_issue_creation PASSED [ 78%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityVulnerability::test_security_issue_serialization PASSED [ 82%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityLevelEnum::test_risk_level_values PASSED [ 86%]
+tests/unit/test_gpt5_p5_security.py::TestSecurityLevelEnum::test_risk_level_ordering PASSED [ 91%]
+tests/unit/test_gpt5_p5_security.py::TestVulnerabilityTypeEnum::test_vulnerability_types_exist PASSED [ 95%]
+tests/unit/test_gpt5_p5_security.py::TestVulnerabilityTypeEnum::test_vulnerability_type_values PASSED [100%]
+
+=================================== FAILURES ===================================
+_________ TestSecurityComplianceScanner.test_path_traversal_detection __________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x14316a940>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x1431b5820>
+
+    @pytest.mark.asyncio
+    async def test_path_traversal_detection(self, security_scanner):
+        """Test path traversal vulnerability detection"""
+        vulnerable_code_samples = [
+            'open(user_filename, "r")',
+            'file_path = f"/uploads/{request.form[\"filename\"]}"',
+            'with open(f"./files/{filename}") as f:',
+            'os.path.join("/base", user_input)'
+        ]
+    
+        safe_code_samples = [
+            'open(secure_filename(user_filename), "r")',
+            'file_path = safe_join("/uploads", request.form["filename"])',
+            'with open(validate_path(f"./files/{filename}")) as f:',
+            'os.path.join("/base", os.path.basename(user_input))'
+        ]
+    
+        # Test vulnerable code detection
+        for code in vulnerable_code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+            path_issues = [
+                issue for issue in issues
+                if issue.vulnerability_type == VulnerabilityType.PATH_TRAVERSAL
+            ]
+            assert len(path_issues) > 0, f"Failed to detect path traversal in: {code}"
+    
+        # Test safe code (should not trigger)
+        for code in safe_code_samples:
+            issues = await security_scanner.scan_code_snippet(code)
+            path_issues = [
+                issue for issue in issues
+                if issue.vulnerability_type == VulnerabilityType.PATH_TRAVERSAL
+            ]
+>           assert len(path_issues) == 0, f"False positive path traversal in: {code}"
+E           AssertionError: False positive path traversal in: os.path.join("/base", os.path.basename(user_input))
+E           assert 1 == 0
+E            +  where 1 = len([SecurityVulnerability(id='PATH_TRAVERSAL_snippet_1_0', vulnerability_type=<VulnerabilityType.PATH_TRAVERSAL: 'path_traversal'>, severity=<SecurityLevel.MEDIUM: 'medium'>, title='Path Traversal Detected', description='Potential path traversal in os.path.join', file_path=None, line_number=1, code_snippet='os.path.join("/base", os.path.basename(user_input))', remediation='Validate file paths and use allowlists', cvss_score=None, cve_id=None, references=[], detected_at=datetime.datetime(2025, 11, 29, 15, 48, 26, 836110), false_positive=False, confidence_level=1.0)])
+
+tests/unit/test_gpt5_p5_security.py:235: AssertionError
+________ TestSecurityComplianceScanner.test_security_report_generation _________
+
+self = <test_gpt5_p5_security.TestSecurityComplianceScanner object at 0x143159df0>
+security_scanner = <core.security.security_compliance_scanner.SecurityComplianceScanner object at 0x14313bca0>
+tmp_path = PosixPath('/private/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/pytest-of-apple/pytest-16/test_security_report_generatio0')
+
+    @pytest.mark.asyncio
+    async def test_security_report_generation(self, security_scanner, tmp_path):
+        """Test comprehensive security report generation"""
+        # Create multiple scan results
+        scan_results = [
+            SecurityScanResult(
+                scan_id="test_scan_report_1",
+                scan_type=ScanType.CODE_VULNERABILITY,
+                target="/app/main.py",
+                start_time=datetime.utcnow(),
+                end_time=datetime.utcnow(),
+                vulnerabilities=[
+                    SecurityVulnerability(
+                        id="report_vuln_1",
+                        title="SQL Injection",
+                        vulnerability_type=VulnerabilityType.SQL_INJECTION,
+                        severity=SecurityLevel.HIGH,
+                        description="SQL injection in user query"
+                    )
+                ]
+            ),
+            SecurityScanResult(
+                scan_id="test_scan_report_2",
+                scan_type=ScanType.CODE_VULNERABILITY,
+                target="/app/utils.py",
+                start_time=datetime.utcnow(),
+                end_time=datetime.utcnow(),
+                vulnerabilities=[
+                    SecurityVulnerability(
+                        id="report_vuln_2",
+                        title="Hardcoded Secrets",
+                        vulnerability_type=VulnerabilityType.HARDCODED_SECRETS,
+                        severity=SecurityLevel.CRITICAL,
+                        description="API key hardcoded"
+                    )
+                ]
+            )
+        ]
+    
+        # Generate report
+        report_path = tmp_path / "security_report.json"
+        await security_scanner.generate_security_report(
+            scan_results=scan_results,
+            output_path=str(report_path)
+        )
+    
+        assert report_path.exists()
+    
+        # Verify report content
+        import json
+        with open(report_path) as f:
+            report = json.load(f)
+    
+        assert "summary" in report
+        assert "scans" in report
+        assert "compliance_status" in report
+        assert "recommendations" in report
+    
+        # Verify summary data
+>       assert report["summary"]["total_files"] == 2
+E       assert 0 == 2
+
+tests/unit/test_gpt5_p5_security.py:558: AssertionError
+=============================== warnings summary ===============================
+../../../../Python/3.9/lib/python/site-packages/jupyter_client/connect.py:22
+  /Users/apple/Library/Python/3.9/lib/python/site-packages/jupyter_client/connect.py:22: DeprecationWarning: Jupyter is migrating its paths to use standard platformdirs
+  given by the platformdirs library.  To remove this warning and
+  see the appropriate new directories, set the environment variable
+  `JUPYTER_PLATFORM_DIRS=1` and then run `jupyter --paths`.
+  The use of platformdirs will be the default in `jupyter_core` v6
+    from jupyter_core.paths import jupyter_data_dir, jupyter_runtime_dir, secure_write
+
+../../../../Python/3.9/lib/python/site-packages/torch/nn/modules/transformer.py:20
+  /Users/apple/Library/Python/3.9/lib/python/site-packages/torch/nn/modules/transformer.py:20: UserWarning: Failed to initialize NumPy: _ARRAY_API not found (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:84.)
+    device: torch.device = torch.device(torch._C._get_default_device()),  # torch.device('cpu'),
+
+config/settings.py:19
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:19: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEBUG: bool = Field(default=False, env="DEBUG")
+
+config/settings.py:22
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:22: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
+
+config/settings.py:23
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:23: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_PORT: int = Field(default=8000, env="API_PORT")
+
+config/settings.py:24
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:24: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_WORKERS: int = Field(default=4, env="API_WORKERS")
+
+config/settings.py:25
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:25: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CORS_ORIGINS: List[str] = Field(
+
+config/settings.py:31
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:31: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_URL: str = Field(
+
+config/settings.py:35
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:35: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_POOL_SIZE: int = Field(default=20, env="DATABASE_POOL_SIZE")
+
+config/settings.py:36
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:36: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_MAX_OVERFLOW: int = Field(default=10, env="DATABASE_MAX_OVERFLOW")
+
+config/settings.py:39
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:39: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
+
+config/settings.py:40
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:40: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_MAX_CONNECTIONS: int = Field(default=50, env="REDIS_MAX_CONNECTIONS")
+
+config/settings.py:42
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:42: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("DATABASE_URL", pre=True, always=True)
+
+config/settings.py:55
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:55: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_HOST: str = Field(default="localhost", env="CHROMADB_HOST")
+
+config/settings.py:56
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:56: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PORT: int = Field(default=8000, env="CHROMADB_PORT")
+
+config/settings.py:57
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:57: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PATH: str = Field(
+
+config/settings.py:63
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:63: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
+
+config/settings.py:64
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:64: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    ANTHROPIC_API_KEY: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
+
+config/settings.py:65
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:65: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OLLAMA_BASE_URL: str = Field(
+
+config/settings.py:71
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:71: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_LLM_PROVIDER: str = Field(default="openai", env="DEFAULT_LLM_PROVIDER")
+
+config/settings.py:72
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:72: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_MODEL: str = Field(default="gpt-5-chat-latest", env="DEFAULT_MODEL")
+
+config/settings.py:73
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:73: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_TEMPERATURE: float = Field(default=0.7, env="LLM_TEMPERATURE")
+
+config/settings.py:74
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:74: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_MAX_TOKENS: int = Field(default=2000, env="LLM_MAX_TOKENS")
+
+config/settings.py:77
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:77: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_TEST_COVERAGE: float = Field(default=95.0, env="TARGET_TEST_COVERAGE")
+
+config/settings.py:78
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:78: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_PERFORMANCE_SCORE: float = Field(
+
+config/settings.py:82
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:82: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_DOCUMENTATION_COVERAGE: float = Field(
+
+config/settings.py:86
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:86: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_CODE_QUALITY_SCORE: float = Field(
+
+config/settings.py:90
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:90: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_SECURITY_SCORE: float = Field(default=95.0, env="TARGET_SECURITY_SCORE")
+
+config/settings.py:91
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:91: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_USER_SATISFACTION: float = Field(
+
+config/settings.py:97
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:97: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    MAX_AGENT_RETRIES: int = Field(default=3, env="MAX_AGENT_RETRIES")
+
+config/settings.py:98
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:98: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    AGENT_TIMEOUT_SECONDS: int = Field(default=300, env="AGENT_TIMEOUT_SECONDS")
+
+config/settings.py:99
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:99: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHECKPOINT_INTERVAL_HOURS: int = Field(
+
+config/settings.py:105
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:105: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    PERSISTENCE_DIR: Path = Field(
+
+config/settings.py:109
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:109: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LOGS_DIR: Path = Field(default=Path("logs"), env="LOGS_DIR")
+
+config/settings.py:112
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:112: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    SECRET_KEY: str = Field(
+
+config/settings.py:116
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:116: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")
+
+config/settings.py:117
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:117: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_EXPIRATION_MINUTES: int = Field(
+
+config/settings.py:123
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:123: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    RATE_LIMIT_PER_MINUTE: int = Field(default=100, env="RATE_LIMIT_PER_MINUTE")
+
+config/settings.py:125
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:125: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("CORS_ORIGINS", pre=True)
+
+config/settings.py:132
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:132: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("PERSISTENCE_DIR", "LOGS_DIR", pre=True)
+
+config/settings.py:13
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:13: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class Settings(BaseSettings):
+
+tests/unit/test_gpt5_p5_security.py:27
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:27: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p5_security.py:28
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:28: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p5_security.py:29
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:29: PytestUnknownMarkWarning: Unknown pytest.mark.security - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.security
+
+tests/unit/test_gpt5_p5_security.py:672
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:672: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p5_security.py:673
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:673: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p5_security.py:674
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:674: PytestUnknownMarkWarning: Unknown pytest.mark.security - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.security
+
+tests/unit/test_gpt5_p5_security.py:722
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:722: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p5_security.py:723
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:723: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p5_security.py:724
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:724: PytestUnknownMarkWarning: Unknown pytest.mark.security - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.security
+
+tests/unit/test_gpt5_p5_security.py:745
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:745: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p5_security.py:746
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:746: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p5_security.py:747
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p5_security.py:747: PytestUnknownMarkWarning: Unknown pytest.mark.security - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.security
+
+tests/conftest.py:502
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/conftest.py:502: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    item.add_marker(pytest.mark.unit)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_path_traversal_detection
+FAILED tests/unit/test_gpt5_p5_security.py::TestSecurityComplianceScanner::test_security_report_generation
+================== 2 failed, 21 passed, 54 warnings in 0.93s ===================

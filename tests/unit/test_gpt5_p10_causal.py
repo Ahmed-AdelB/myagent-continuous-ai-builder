@@ -231,6 +231,18 @@ class MockCausalAnalyticsEngine:
         # Simulate causal discovery based on method
         variable_names = list(data[0].keys()) if data else []
 
+        # Ensure all variables from data exist in the engine
+        for var_name in variable_names:
+            if var_name not in self.variables:
+                new_var = CausalVariable(
+                    variable_id=var_name,
+                    name=var_name,
+                    variable_type=VariableType.CONFOUNDER,  # Default type
+                    data_type="continuous" if isinstance(data[0][var_name], (int, float)) else "categorical",
+                    description=f"Discovered variable: {var_name}"
+                )
+                await self.add_variable(new_var)
+
         if method == CausalMethodType.BACKDOOR:
             # Simulate backdoor criterion analysis
             for i, var1 in enumerate(variable_names):
@@ -1178,6 +1190,7 @@ def sample_experiment_data():
     return treatment_data, control_data
 
 
+@pytest.mark.gpt5
 class TestCausalAnalyticsEngine:
     """Comprehensive tests for Causal Analytics Engine"""
 

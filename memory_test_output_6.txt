@@ -1,0 +1,710 @@
+/Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.1.1, pluggy-1.6.0
+rootdir: /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder
+configfile: pytest.ini
+plugins: asyncio-0.23.5, anyio-4.12.0, langsmith-0.4.37, cov-4.1.0
+asyncio: mode=strict
+collected 23 items
+
+tests/unit/test_gpt5_p4_memory.py FFFFFFFFFFFFFFFFF...F..                [100%]
+
+=================================== FAILURES ===================================
+______________ TestHierarchicalMemoryPyramid.test_initialization _______________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fbbe50>
+temp_database = '/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/tmpedr40ubt.db'
+
+    @pytest.mark.asyncio
+    async def test_initialization(self, temp_database):
+        """Test memory pyramid initialization"""
+        pyramid = HierarchicalMemoryPyramid(database_path=temp_database)
+    
+        # Test initialization
+        await pyramid.initialize()
+    
+        # Verify tiers are created
+        assert pyramid.working_memory is not None
+        assert pyramid.short_term_memory is not None
+        assert pyramid.long_term_memory is not None
+        assert pyramid.archive_memory is not None
+    
+        # Verify database setup
+>       assert pyramid.database_path == temp_database
+E       AssertionError: assert PosixPath('/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/tmpedr40ubt.db') == '/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/tmpedr40ubt.db'
+E        +  where PosixPath('/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/tmpedr40ubt.db') = <core.memory_pyramid.hierarchical_memory_pyramid.HierarchicalMemoryPyramid object at 0x145fdad00>.database_path
+
+tests/unit/test_gpt5_p4_memory.py:52: AssertionError
+----------------------------- Captured stderr call -----------------------------
+2025-11-29 15:28:42,892 [INFO] telemetry_engine: [telemetry_engine] Component registered: hierarchical_memory_pyramid
+2025-11-29 15:28:42,907 [INFO] telemetry_engine: [hierarchical_memory_pyramid] Starting hierarchical memory pyramid
+2025-11-29 15:28:42,907 [INFO] telemetry_engine: [hierarchical_memory_pyramid] Loading memories from persistent storage
+2025-11-29 15:28:42,908 [INFO] telemetry_engine: [hierarchical_memory_pyramid] Loaded 0 memories from persistent storage
+2025-11-29 15:28:42,908 [INFO] telemetry_engine: [hierarchical_memory_pyramid] Hierarchical memory pyramid started
+------------------------------ Captured log call -------------------------------
+INFO     telemetry_engine:telemetry_engine.py:286 [telemetry_engine] Component registered: hierarchical_memory_pyramid
+INFO     telemetry_engine:telemetry_engine.py:286 [hierarchical_memory_pyramid] Starting hierarchical memory pyramid
+INFO     telemetry_engine:telemetry_engine.py:286 [hierarchical_memory_pyramid] Loading memories from persistent storage
+INFO     telemetry_engine:telemetry_engine.py:286 [hierarchical_memory_pyramid] Loaded 0 memories from persistent storage
+INFO     telemetry_engine:telemetry_engine.py:286 [hierarchical_memory_pyramid] Hierarchical memory pyramid started
+_________ TestHierarchicalMemoryPyramid.test_store_memory_working_tier _________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fd2130>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x145fbdee0>
+
+    @pytest.mark.asyncio
+    async def test_store_memory_working_tier(self, memory_pyramid):
+        """Test storing memory in working tier"""
+        content = "User requested fibonacci function implementation"
+        memory_type = MemoryType.USER_REQUEST
+    
+>       memory_id = await memory_pyramid.store_memory(
+            content=content,
+            memory_type=memory_type,
+            importance=0.8
+        )
+E       AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:63: AttributeError
+__________ TestHierarchicalMemoryPyramid.test_store_multiple_memories __________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fd23d0>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x145ff8a60>
+
+    @pytest.mark.asyncio
+    async def test_store_multiple_memories(self, memory_pyramid):
+        """Test storing multiple memories in different tiers"""
+        memories = [
+            {
+                "content": "User request for calculator",
+                "memory_type": MemoryType.USER_REQUEST,
+                "importance": 0.7,
+                "tier": MemoryTier.WORKING
+            },
+            {
+                "content": "Implemented basic calculator class",
+                "memory_type": MemoryType.IMPLEMENTATION,
+                "importance": 0.8,
+                "tier": MemoryTier.SHORT_TERM
+            },
+            {
+                "content": "Performance optimization applied",
+                "memory_type": MemoryType.OPTIMIZATION,
+                "importance": 0.9,
+                "tier": MemoryTier.LONG_TERM
+            }
+        ]
+    
+        memory_ids = []
+        for memory_data in memories:
+>           memory_id = await memory_pyramid.store_memory(
+                content=memory_data["content"],
+                memory_type=memory_data["memory_type"],
+                importance=memory_data["importance"],
+                tier=memory_data["tier"]
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:104: AttributeError
+___________ TestHierarchicalMemoryPyramid.test_retrieve_memory_by_id ___________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fd2670>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x145ff8e50>
+
+    @pytest.mark.asyncio
+    async def test_retrieve_memory_by_id(self, memory_pyramid):
+        """Test retrieving specific memory by ID"""
+        content = "Test memory for retrieval"
+        memory_type = MemoryType.DECISION
+    
+>       memory_id = await memory_pyramid.store_memory(
+            content=content,
+            memory_type=memory_type,
+            importance=0.6
+        )
+E       AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:131: AttributeError
+________ TestHierarchicalMemoryPyramid.test_search_memories_by_content _________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fd2910>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x145ff8ee0>
+
+    @pytest.mark.asyncio
+    async def test_search_memories_by_content(self, memory_pyramid):
+        """Test searching memories by content"""
+        # Store test memories
+        test_memories = [
+            "Implement fibonacci function using recursion",
+            "Optimize fibonacci with memoization",
+            "Create unit tests for calculator module",
+            "Debug performance issues in sorting algorithm"
+        ]
+    
+        for content in test_memories:
+>           await memory_pyramid.store_memory(
+                content=content,
+                memory_type=MemoryType.IMPLEMENTATION,
+                importance=0.7
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:158: AttributeError
+__________ TestHierarchicalMemoryPyramid.test_search_memories_by_type __________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fd2bb0>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x145ff8c10>
+
+    @pytest.mark.asyncio
+    async def test_search_memories_by_type(self, memory_pyramid):
+        """Test searching memories by type"""
+        # Store memories of different types
+        memories_by_type = [
+            ("User wants calculator", MemoryType.USER_REQUEST),
+            ("Implemented Calculator class", MemoryType.IMPLEMENTATION),
+            ("Decided to use Python", MemoryType.DECISION),
+            ("Fixed division by zero bug", MemoryType.BUG_FIX),
+            ("Optimized algorithm performance", MemoryType.OPTIMIZATION)
+        ]
+    
+        for content, mem_type in memories_by_type:
+>           await memory_pyramid.store_memory(
+                content=content,
+                memory_type=mem_type,
+                importance=0.7
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:189: AttributeError
+_______ TestHierarchicalMemoryPyramid.test_memory_consolidation_by_count _______
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fd2e50>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14610f1f0>
+
+    @pytest.mark.asyncio
+    async def test_memory_consolidation_by_count(self, memory_pyramid):
+        """Test automatic memory consolidation when working memory is full"""
+        # Set low threshold for testing
+        pyramid = memory_pyramid
+>       pyramid.working_memory_threshold = 3
+E       AttributeError: 'async_generator' object has no attribute 'working_memory_threshold'
+
+tests/unit/test_gpt5_p4_memory.py:209: AttributeError
+_______ TestHierarchicalMemoryPyramid.test_memory_consolidation_by_time ________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fda130>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14610f550>
+
+    @pytest.mark.asyncio
+    async def test_memory_consolidation_by_time(self, memory_pyramid):
+        """Test time-based memory consolidation"""
+        pyramid = memory_pyramid
+    
+        # Create old memory (simulate)
+        old_content = "Old memory for consolidation test"
+>       memory_id = await pyramid.store_memory(
+            content=old_content,
+            memory_type=MemoryType.IMPLEMENTATION,
+            importance=0.6
+        )
+E       AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:238: AttributeError
+____________ TestHierarchicalMemoryPyramid.test_memory_compression _____________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fda3d0>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14610f940>
+
+    @pytest.mark.asyncio
+    async def test_memory_compression(self, memory_pyramid):
+        """Test memory compression for archive tier"""
+        pyramid = memory_pyramid
+    
+        # Create memories for compression
+        related_memories = [
+            "Implemented fibonacci function",
+            "Added memoization to fibonacci",
+            "Optimized fibonacci performance",
+            "Fixed fibonacci edge cases"
+        ]
+    
+        memory_ids = []
+        for content in related_memories:
+>           memory_id = await pyramid.store_memory(
+                content=content,
+                memory_type=MemoryType.IMPLEMENTATION,
+                importance=0.7,
+                tier=MemoryTier.LONG_TERM
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:278: AttributeError
+_________ TestHierarchicalMemoryPyramid.test_memory_importance_scoring _________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fda670>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14610fd30>
+
+    @pytest.mark.asyncio
+    async def test_memory_importance_scoring(self, memory_pyramid):
+        """Test memory importance calculation and ranking"""
+        # Store memories with different characteristics
+        memories = [
+            {
+                "content": "Critical security vulnerability found",
+                "memory_type": MemoryType.BUG_FIX,
+                "importance": 0.95,
+                "access_count": 10
+            },
+            {
+                "content": "Minor UI improvement suggestion",
+                "memory_type": MemoryType.IMPROVEMENT,
+                "importance": 0.3,
+                "access_count": 1
+            },
+            {
+                "content": "Core algorithm implementation",
+                "memory_type": MemoryType.IMPLEMENTATION,
+                "importance": 0.8,
+                "access_count": 5
+            }
+        ]
+    
+        memory_ids = []
+        for memory_data in memories:
+>           memory_id = await memory_pyramid.store_memory(
+                content=memory_data["content"],
+                memory_type=memory_data["memory_type"],
+                importance=memory_data["importance"]
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:328: AttributeError
+___________ TestHierarchicalMemoryPyramid.test_memory_relationships ____________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fd2eb0>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14610f700>
+
+    @pytest.mark.asyncio
+    async def test_memory_relationships(self, memory_pyramid):
+        """Test memory relationship tracking"""
+        # Create parent memory
+>       parent_id = await memory_pyramid.store_memory(
+            content="User request for calculator application",
+            memory_type=MemoryType.USER_REQUEST,
+            importance=0.8
+        )
+E       AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:353: AttributeError
+_____________ TestHierarchicalMemoryPyramid.test_memory_statistics _____________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fd26d0>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14612d280>
+
+    @pytest.mark.asyncio
+    async def test_memory_statistics(self, memory_pyramid):
+        """Test memory usage statistics"""
+        # Add various memories
+        for i in range(10):
+>           await memory_pyramid.store_memory(
+                content=f"Test memory {i}",
+                memory_type=MemoryType.IMPLEMENTATION,
+                importance=0.5 + (i * 0.05),
+                tier=MemoryTier.WORKING if i < 3 else MemoryTier.SHORT_TERM
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:390: AttributeError
+______________ TestHierarchicalMemoryPyramid.test_memory_cleanup _______________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fbbaf0>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14612d790>
+
+    @pytest.mark.asyncio
+    async def test_memory_cleanup(self, memory_pyramid):
+        """Test memory cleanup and garbage collection"""
+        # Create low-importance memories
+        low_importance_ids = []
+        for i in range(5):
+>           memory_id = await memory_pyramid.store_memory(
+                content=f"Low importance memory {i}",
+                memory_type=MemoryType.OPTIMIZATION,
+                importance=0.1,
+                tier=MemoryTier.ARCHIVE
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:413: AttributeError
+___________ TestHierarchicalMemoryPyramid.test_memory_export_import ____________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fda700>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14612dc10>
+temp_dir = PosixPath('/var/folders/gc/cjnggvbd1bdgsblrng_h4mf40000gn/T/tmpsou_bf4y')
+
+    @pytest.mark.asyncio
+    async def test_memory_export_import(self, memory_pyramid, temp_dir):
+        """Test memory export and import functionality"""
+        # Store test memories
+        test_memories = [
+            ("Memory export test 1", MemoryType.USER_REQUEST, 0.8),
+            ("Memory export test 2", MemoryType.IMPLEMENTATION, 0.7),
+            ("Memory export test 3", MemoryType.DECISION, 0.9)
+        ]
+    
+        original_ids = []
+        for content, mem_type, importance in test_memories:
+>           memory_id = await memory_pyramid.store_memory(
+                content=content,
+                memory_type=mem_type,
+                importance=importance
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:455: AttributeError
+_______ TestHierarchicalMemoryPyramid.test_concurrent_memory_operations ________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fda1f0>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14612d670>
+
+    @pytest.mark.asyncio
+    async def test_concurrent_memory_operations(self, memory_pyramid):
+        """Test thread-safe concurrent memory operations"""
+        async def store_memories_batch(batch_id: int):
+            """Store a batch of memories concurrently"""
+            memory_ids = []
+            for i in range(5):
+                memory_id = await memory_pyramid.store_memory(
+                    content=f"Batch {batch_id} - Memory {i}",
+                    memory_type=MemoryType.IMPLEMENTATION,
+                    importance=0.5
+                )
+                memory_ids.append(memory_id)
+            return memory_ids
+    
+        # Run concurrent memory storage operations
+        tasks = [store_memories_batch(i) for i in range(3)]
+>       results = await asyncio.gather(*tasks)
+
+tests/unit/test_gpt5_p4_memory.py:512: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+batch_id = 0
+
+    async def store_memories_batch(batch_id: int):
+        """Store a batch of memories concurrently"""
+        memory_ids = []
+        for i in range(5):
+>           memory_id = await memory_pyramid.store_memory(
+                content=f"Batch {batch_id} - Memory {i}",
+                memory_type=MemoryType.IMPLEMENTATION,
+                importance=0.5
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:502: AttributeError
+___________ TestHierarchicalMemoryPyramid.test_memory_tier_promotion ___________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fdab80>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14612d8b0>
+
+    @pytest.mark.asyncio
+    async def test_memory_tier_promotion(self, memory_pyramid):
+        """Test memory promotion between tiers based on access patterns"""
+        # Store memory in short-term
+>       memory_id = await memory_pyramid.store_memory(
+            content="Frequently accessed implementation detail",
+            memory_type=MemoryType.IMPLEMENTATION,
+            importance=0.6,
+            tier=MemoryTier.SHORT_TERM
+        )
+E       AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:528: AttributeError
+________ TestHierarchicalMemoryPyramid.test_memory_pyramid_performance _________
+
+self = <test_gpt5_p4_memory.TestHierarchicalMemoryPyramid object at 0x145fdae20>
+memory_pyramid = <async_generator object TestHierarchicalMemoryPyramid.memory_pyramid at 0x14610f550>
+
+    @pytest.mark.asyncio
+    async def test_memory_pyramid_performance(self, memory_pyramid):
+        """Test memory pyramid performance with large dataset"""
+        import time
+    
+        # Store large number of memories
+        start_time = time.time()
+        memory_ids = []
+    
+        for i in range(100):
+>           memory_id = await memory_pyramid.store_memory(
+                content=f"Performance test memory {i}",
+                memory_type=MemoryType.IMPLEMENTATION,
+                importance=0.5 + (i % 50) / 100  # Varying importance
+            )
+E           AttributeError: 'async_generator' object has no attribute 'store_memory'
+
+tests/unit/test_gpt5_p4_memory.py:560: AttributeError
+_______________ TestMemoryNode.test_memory_node_importance_decay _______________
+
+self = <test_gpt5_p4_memory.TestMemoryNode object at 0x145fe3880>
+
+    def test_memory_node_importance_decay(self):
+        """Test memory importance decay over time"""
+        node = MemoryNode(
+            content="Importance decay test",
+            memory_type=MemoryType.OPTIMIZATION,
+            importance=0.9
+        )
+    
+        # Mock old creation time
+        with patch.object(node, 'created_at', datetime.now() - timedelta(days=30)):
+            decayed_importance = node.calculate_decayed_importance(decay_rate=0.01)
+    
+            assert decayed_importance < node.importance
+>           assert decayed_importance > 0
+
+tests/unit/test_gpt5_p4_memory.py:671: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <unittest.mock._patch object at 0x1460225b0>
+exc_info = (None, None, None)
+
+    def __exit__(self, *exc_info):
+        """Undo the patch."""
+        if self.is_local and self.temp_original is not DEFAULT:
+            setattr(self.target, self.attribute, self.temp_original)
+        else:
+>           delattr(self.target, self.attribute)
+E           AttributeError: can't delete attribute
+
+/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/unittest/mock.py:1523: AttributeError
+=============================== warnings summary ===============================
+venv/lib/python3.9/site-packages/jupyter_client/connect.py:22
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/jupyter_client/connect.py:22: DeprecationWarning: Jupyter is migrating its paths to use standard platformdirs
+  given by the platformdirs library.  To remove this warning and
+  see the appropriate new directories, set the environment variable
+  `JUPYTER_PLATFORM_DIRS=1` and then run `jupyter --paths`.
+  The use of platformdirs will be the default in `jupyter_core` v6
+    from jupyter_core.paths import jupyter_data_dir, jupyter_runtime_dir, secure_write
+
+venv/lib/python3.9/site-packages/torch/nn/modules/transformer.py:20
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/venv/lib/python3.9/site-packages/torch/nn/modules/transformer.py:20: UserWarning: Failed to initialize NumPy: _ARRAY_API not found (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:84.)
+    device: torch.device = torch.device(torch._C._get_default_device()),  # torch.device('cpu'),
+
+config/settings.py:19
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:19: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEBUG: bool = Field(default=False, env="DEBUG")
+
+config/settings.py:22
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:22: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
+
+config/settings.py:23
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:23: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_PORT: int = Field(default=8000, env="API_PORT")
+
+config/settings.py:24
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:24: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_WORKERS: int = Field(default=4, env="API_WORKERS")
+
+config/settings.py:25
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:25: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CORS_ORIGINS: List[str] = Field(
+
+config/settings.py:31
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:31: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_URL: str = Field(
+
+config/settings.py:35
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:35: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_POOL_SIZE: int = Field(default=20, env="DATABASE_POOL_SIZE")
+
+config/settings.py:36
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:36: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_MAX_OVERFLOW: int = Field(default=10, env="DATABASE_MAX_OVERFLOW")
+
+config/settings.py:39
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:39: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
+
+config/settings.py:40
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:40: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_MAX_CONNECTIONS: int = Field(default=50, env="REDIS_MAX_CONNECTIONS")
+
+config/settings.py:42
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:42: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("DATABASE_URL", pre=True, always=True)
+
+config/settings.py:55
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:55: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_HOST: str = Field(default="localhost", env="CHROMADB_HOST")
+
+config/settings.py:56
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:56: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PORT: int = Field(default=8000, env="CHROMADB_PORT")
+
+config/settings.py:57
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:57: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PATH: str = Field(
+
+config/settings.py:63
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:63: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
+
+config/settings.py:64
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:64: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    ANTHROPIC_API_KEY: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
+
+config/settings.py:65
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:65: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OLLAMA_BASE_URL: str = Field(
+
+config/settings.py:71
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:71: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_LLM_PROVIDER: str = Field(default="openai", env="DEFAULT_LLM_PROVIDER")
+
+config/settings.py:72
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:72: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_MODEL: str = Field(default="gpt-5-chat-latest", env="DEFAULT_MODEL")
+
+config/settings.py:73
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:73: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_TEMPERATURE: float = Field(default=0.7, env="LLM_TEMPERATURE")
+
+config/settings.py:74
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:74: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_MAX_TOKENS: int = Field(default=2000, env="LLM_MAX_TOKENS")
+
+config/settings.py:77
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:77: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_TEST_COVERAGE: float = Field(default=95.0, env="TARGET_TEST_COVERAGE")
+
+config/settings.py:78
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:78: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_PERFORMANCE_SCORE: float = Field(
+
+config/settings.py:82
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:82: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_DOCUMENTATION_COVERAGE: float = Field(
+
+config/settings.py:86
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:86: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_CODE_QUALITY_SCORE: float = Field(
+
+config/settings.py:90
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:90: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_SECURITY_SCORE: float = Field(default=95.0, env="TARGET_SECURITY_SCORE")
+
+config/settings.py:91
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:91: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_USER_SATISFACTION: float = Field(
+
+config/settings.py:97
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:97: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    MAX_AGENT_RETRIES: int = Field(default=3, env="MAX_AGENT_RETRIES")
+
+config/settings.py:98
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:98: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    AGENT_TIMEOUT_SECONDS: int = Field(default=300, env="AGENT_TIMEOUT_SECONDS")
+
+config/settings.py:99
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:99: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHECKPOINT_INTERVAL_HOURS: int = Field(
+
+config/settings.py:105
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:105: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    PERSISTENCE_DIR: Path = Field(
+
+config/settings.py:109
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:109: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LOGS_DIR: Path = Field(default=Path("logs"), env="LOGS_DIR")
+
+config/settings.py:112
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:112: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    SECRET_KEY: str = Field(
+
+config/settings.py:116
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:116: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")
+
+config/settings.py:117
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:117: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_EXPIRATION_MINUTES: int = Field(
+
+config/settings.py:123
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:123: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    RATE_LIMIT_PER_MINUTE: int = Field(default=100, env="RATE_LIMIT_PER_MINUTE")
+
+config/settings.py:125
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:125: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("CORS_ORIGINS", pre=True)
+
+config/settings.py:132
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:132: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("PERSISTENCE_DIR", "LOGS_DIR", pre=True)
+
+config/settings.py:13
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:13: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class Settings(BaseSettings):
+
+tests/unit/test_gpt5_p4_memory.py:23
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:23: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p4_memory.py:24
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:24: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p4_memory.py:25
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:25: PytestUnknownMarkWarning: Unknown pytest.mark.memory - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.memory
+
+tests/unit/test_gpt5_p4_memory.py:591
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:591: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p4_memory.py:592
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:592: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p4_memory.py:593
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:593: PytestUnknownMarkWarning: Unknown pytest.mark.memory - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.memory
+
+tests/unit/test_gpt5_p4_memory.py:674
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:674: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.unit
+
+tests/unit/test_gpt5_p4_memory.py:675
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:675: PytestUnknownMarkWarning: Unknown pytest.mark.gpt5 - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.gpt5
+
+tests/unit/test_gpt5_p4_memory.py:676
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/unit/test_gpt5_p4_memory.py:676: PytestUnknownMarkWarning: Unknown pytest.mark.memory - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.memory
+
+tests/conftest.py:503
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/tests/conftest.py:503: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    item.add_marker(pytest.mark.unit)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_initialization
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_store_memory_working_tier
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_store_multiple_memories
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_retrieve_memory_by_id
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_search_memories_by_content
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_search_memories_by_type
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_consolidation_by_count
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_consolidation_by_time
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_compression
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_importance_scoring
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_relationships
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_statistics
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_cleanup
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_export_import
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_concurrent_memory_operations
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_tier_promotion
+FAILED tests/unit/test_gpt5_p4_memory.py::TestHierarchicalMemoryPyramid::test_memory_pyramid_performance
+FAILED tests/unit/test_gpt5_p4_memory.py::TestMemoryNode::test_memory_node_importance_decay
+================== 18 failed, 5 passed, 51 warnings in 0.72s ===================
