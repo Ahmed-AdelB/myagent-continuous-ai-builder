@@ -9,8 +9,9 @@ import time
 import uuid
 import hashlib
 from datetime import datetime, timezone, timedelta
+import math
 from typing import Dict, List, Any, Optional, Tuple, Set, Union
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from enum import Enum
 import threading
 from collections import defaultdict, deque
@@ -32,6 +33,14 @@ class MemoryType(Enum):
     SEMANTIC = "semantic"      # General knowledge/facts
     PROCEDURAL = "procedural"  # How-to knowledge/skills
     CONTEXTUAL = "contextual"  # Situational patterns
+    USER_REQUEST = "user_request"
+    IMPLEMENTATION = "implementation"
+    DECISION = "decision"
+    BUG_FIX = "bug_fix"
+    OPTIMIZATION = "optimization"
+    IMPROVEMENT = "improvement"
+    ERROR = "error"
+    SUCCESS = "success"
 
 class MemoryPriority(Enum):
     CRITICAL = "critical"      # Must retain
@@ -42,24 +51,67 @@ class MemoryPriority(Enum):
 @dataclass
 class MemoryNode:
     """Individual memory unit in the hierarchy"""
-    node_id: str
-    content: Dict[str, Any]
-    memory_type: MemoryType
-    priority: MemoryPriority
-    creation_time: datetime
-    last_accessed: datetime
-    access_count: int
-    tier: MemoryTier
+    node_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    content: Dict[str, Any] = field(default_factory=dict)
+    memory_type: MemoryType = MemoryType.EPISODIC
+    priority: MemoryPriority = MemoryPriority.MEDIUM
+    creation_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_accessed: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    access_count: int = 0
+    tier: MemoryTier = MemoryTier.WORKING
 
     # Relationships
-    parent_nodes: List[str]
-    child_nodes: List[str]
-    related_nodes: List[str]
+    parent_nodes: List[str] = field(default_factory=list)
+    child_nodes: List[str] = field(default_factory=list)
+    related_nodes: List[str] = field(default_factory=list)
 
     # Metadata
+    metadata: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any]
     embedding: Optional[List[float]] = None
     compression_ratio: float = 1.0
+    importance: float = 0.5
+
+    @property
+    def compressed(self) -> bool:
+        return self.compression_ratio > 1.0
+
+    @property
+    def last_accessed_at(self) -> datetime:
+        return self.last_accessed
+
+    @last_accessed_at.setter
+    def last_accessed_at(self, value: datetime):
+        self.last_accessed = value
+
+    @property
+    def created_at(self) -> datetime:
+        return self.creation_time
+
+    @created_at.setter
+    def created_at(self, value: datetime):
+        self.creation_time = value
+
+    @property
+    def is_deleted(self) -> bool:
+        return False  # Basic implementation
+
+    def update_access(self):
+        """Update access statistics"""
+        self.last_accessed = datetime.now(timezone.utc)
+        self.access_count += 1
+
+    def calculate_decayed_importance(self, decay_rate: float = 0.01) -> float:
+        """Calculate importance with time decay"""
+        now = datetime.now(timezone.utc)
+        created = self.creation_time
+        
+        # Handle timezone mismatch
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+            
+        time_diff = (now - created).total_seconds() / 3600  # Hours
+        return self.importance * (1.0 / (1.0 + decay_rate * time_diff))
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -76,7 +128,8 @@ class MemoryNode:
             'related_nodes': self.related_nodes,
             'metadata': self.metadata,
             'embedding': self.embedding,
-            'compression_ratio': self.compression_ratio
+            'compression_ratio': self.compression_ratio,
+            'importance': self.importance
         }
 
     @classmethod
@@ -95,8 +148,20 @@ class MemoryNode:
             related_nodes=data['related_nodes'],
             metadata=data['metadata'],
             embedding=data.get('embedding'),
-            compression_ratio=data.get('compression_ratio', 1.0)
+            compression_ratio=data.get('compression_ratio', 1.0),
+            importance=data.get('importance', 0.5)
         )
+
+    def __lt__(self, other):
+        if not isinstance(other, MemoryNode):
+            return NotImplemented
+        # Compare based on importance, then priority, then recency
+        if self.importance != other.importance:
+            return self.importance < other.importance
+        if self.priority.value != other.priority.value:
+            # This is simplified; ideally we'd map priority to int
+            return self.priority.value < other.priority.value
+        return self.creation_time < other.creation_time
 
 @dataclass
 class ConsolidationPattern:
@@ -127,13 +192,16 @@ class HierarchicalMemoryPyramid:
     - Pattern-based knowledge extraction
     """
 
-    def __init__(self, storage_path: str = "./memory_pyramid", telemetry=None):
+    def __init__(self, storage_path: str = "./memory_pyramid", database_path: str = None, telemetry=None):
         self.telemetry = telemetry or get_telemetry()
         self.telemetry.register_component('hierarchical_memory_pyramid')
 
         # Storage configuration
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
+        
+        # Database path override
+        self.db_path_override = Path(database_path) if database_path else None
 
         # Memory tiers with capacity limits
         self.tier_capacities = {
@@ -160,8 +228,8 @@ class HierarchicalMemoryPyramid:
         self.auto_promotion_enabled = True
 
         # Threading
-        self._lock = threading.Lock()
-        self._background_active = False
+        self._lock = threading.RLock()
+        self._stop_event = threading.Event()
         self._background_thread = None
 
         # Performance tracking
@@ -173,14 +241,43 @@ class HierarchicalMemoryPyramid:
             'demotions': 0,
             'compressions': 0
         }
+        # Metrics
+        self.metrics = {
+            'total_memories': 0,
+            'cache_hits': 0,
+            'cache_misses': 0,
+            'consolidation_runs': 0
+        }
 
         # Consolidation patterns
         self.consolidation_patterns = self._initialize_consolidation_patterns()
 
         # Initialize database for persistent storage
         self._init_persistent_storage()
+        
+        self.is_initialized = False
 
-    async def start(self):
+    @property
+    def working_memory(self):
+        return self.tier_capacities.get(MemoryTier.WORKING)
+
+    @property
+    def short_term_memory(self):
+        return self.tier_capacities.get(MemoryTier.SHORT_TERM)
+
+    @property
+    def long_term_memory(self):
+        return self.tier_capacities.get(MemoryTier.LONG_TERM)
+
+    @property
+    def archive_memory(self):
+        return self.tier_capacities.get(MemoryTier.ARCHIVE)
+
+    @property
+    def database_path(self):
+        return str(self.db_path)
+
+    async def initialize(self):
         """Start memory pyramid system"""
         self.telemetry.log_info("Starting hierarchical memory pyramid", 'hierarchical_memory_pyramid')
 
@@ -188,29 +285,32 @@ class HierarchicalMemoryPyramid:
         await self._load_memories_from_storage()
 
         # Start background processing
-        self._background_active = True
+        self._stop_event.clear()
         self._background_thread = threading.Thread(target=self._background_processing_loop)
         self._background_thread.daemon = True
         self._background_thread.start()
 
+        self.is_initialized = True
         self.telemetry.log_info("Hierarchical memory pyramid started", 'hierarchical_memory_pyramid')
 
-    async def stop(self):
+    async def cleanup(self):
         """Stop memory pyramid system"""
         self.telemetry.log_info("Stopping hierarchical memory pyramid", 'hierarchical_memory_pyramid')
 
         # Stop background processing
-        self._background_active = False
+        self._stop_event.set()
         if self._background_thread:
-            self._background_thread.join(timeout=10)
+            self._background_thread.join(timeout=5)
 
         # Save all memories
         await self._save_memories_to_storage()
 
         self.telemetry.log_info("Hierarchical memory pyramid stopped", 'hierarchical_memory_pyramid')
 
-    def store_memory(self, content: Dict[str, Any], memory_type: MemoryType = MemoryType.EPISODIC,
-                    priority: MemoryPriority = MemoryPriority.MEDIUM, metadata: Dict[str, Any] = None) -> str:
+    async def store_memory(self, content: Dict[str, Any], memory_type: MemoryType = MemoryType.EPISODIC,
+                    priority: MemoryPriority = MemoryPriority.MEDIUM, importance: float = 0.5, 
+                    tier: MemoryTier = MemoryTier.WORKING, metadata: Dict[str, Any] = None,
+                    parent_memory_id: str = None) -> str:
         """Store new memory in working tier"""
 
         node_id = str(uuid.uuid4())
@@ -224,37 +324,47 @@ class HierarchicalMemoryPyramid:
             creation_time=now,
             last_accessed=now,
             access_count=1,
-            tier=MemoryTier.WORKING,
-            parent_nodes=[],
+            tier=tier,
+            parent_nodes=[parent_memory_id] if parent_memory_id else [],
             child_nodes=[],
             related_nodes=[],
-            metadata=metadata or {}
+            metadata=metadata or {},
+            importance=importance
         )
 
         with self._lock:
-            # Add to working memory
-            self.memory_tiers[MemoryTier.WORKING][node_id] = memory_node
+            # Add to specified tier
+            self.memory_tiers[tier][node_id] = memory_node
 
             # Update indices
             self._update_indices(memory_node)
 
+            # Handle parent relationship
+            if parent_memory_id:
+                parent = await self.retrieve_memory(parent_memory_id)
+                if parent:
+                    if node_id not in parent.child_nodes:
+                        parent.child_nodes.append(node_id)
+                        # Also update parent in its tier
+                        self.memory_tiers[parent.tier][parent.node_id] = parent
+
             # Update metrics
             self.memory_metrics['total_nodes'] += 1
-            self.memory_metrics['tier_distributions'][MemoryTier.WORKING.value] += 1
+            self.memory_metrics['tier_distributions'][tier.value] += 1
 
-        # Check if working memory needs consolidation
-        if len(self.memory_tiers[MemoryTier.WORKING]) > self.tier_capacities[MemoryTier.WORKING]:
-            self._trigger_consolidation(MemoryTier.WORKING)
+        # Check if tier needs consolidation
+        if len(self.memory_tiers[tier]) > self.tier_capacities[tier]:
+            self._trigger_consolidation(tier)
 
         self.telemetry.log_debug(
-            f"Stored memory in working tier: {node_id}",
+            f"Stored memory in {tier.value} tier: {node_id}",
             'hierarchical_memory_pyramid',
             {'memory_type': memory_type.value, 'priority': priority.value}
         )
 
         return node_id
 
-    def retrieve_memory(self, node_id: str) -> Optional[MemoryNode]:
+    async def retrieve_memory(self, node_id: str) -> Optional[MemoryNode]:
         """Retrieve memory by ID from any tier"""
 
         with self._lock:
@@ -280,7 +390,7 @@ class HierarchicalMemoryPyramid:
 
         return None
 
-    def search_memories(self, query: Dict[str, Any], limit: int = 10,
+    async def search_memories(self, query: Union[Dict[str, Any], str], limit: int = 10,
                        memory_type: MemoryType = None, tier: MemoryTier = None) -> List[MemoryNode]:
         """Search memories across tiers"""
 
@@ -300,9 +410,13 @@ class HierarchicalMemoryPyramid:
                 # Score and rank memories
                 scored_memories = []
                 for memory in tier_memories:
-                    score = self._calculate_relevance_score(memory, query)
-                    if score > 0:
-                        scored_memories.append((score, memory))
+                    if not query:
+                        # Return all if query is empty (filtered by type/tier)
+                        scored_memories.append((1.0, memory))
+                    else:
+                        score = self._calculate_relevance_score(memory, query)
+                        if score > 0:
+                            scored_memories.append((score, memory))
 
                 # Sort by score
                 scored_memories.sort(reverse=True)
@@ -319,16 +433,16 @@ class HierarchicalMemoryPyramid:
         self.telemetry.log_debug(
             f"Memory search returned {len(results[:limit])} results",
             'hierarchical_memory_pyramid',
-            {'query_keys': list(query.keys()), 'limit': limit}
+            {'query': str(query), 'limit': limit}
         )
 
         return results[:limit]
 
-    def create_relationship(self, node_id1: str, node_id2: str, relationship_type: str = "related"):
+    async def create_relationship(self, node_id1: str, node_id2: str, relationship_type: str = "related"):
         """Create relationship between two memory nodes"""
 
-        memory1 = self.retrieve_memory(node_id1)
-        memory2 = self.retrieve_memory(node_id2)
+        memory1 = await self.retrieve_memory(node_id1)
+        memory2 = await self.retrieve_memory(node_id2)
 
         if not memory1 or not memory2:
             return False
@@ -352,7 +466,7 @@ class HierarchicalMemoryPyramid:
 
         return True
 
-    def get_related_memories(self, node_id: str, depth: int = 1) -> List[MemoryNode]:
+    async def get_related_memories(self, node_id: str, depth: int = 1) -> List[MemoryNode]:
         """Get related memories up to specified depth"""
 
         related_ids = set()
@@ -372,13 +486,13 @@ class HierarchicalMemoryPyramid:
         # Retrieve memory nodes
         related_memories = []
         for rel_id in related_ids:
-            memory = self.retrieve_memory(rel_id)
+            memory = await self.retrieve_memory(rel_id)
             if memory:
                 related_memories.append(memory)
 
         return related_memories
 
-    def consolidate_memories(self, source_tier: MemoryTier, strategy: str = "auto") -> int:
+    async def consolidate_memories(self, source_tier: MemoryTier, strategy: str = "auto") -> int:
         """Manually trigger memory consolidation"""
 
         pattern = self._select_consolidation_pattern(source_tier, strategy)
@@ -405,11 +519,54 @@ class HierarchicalMemoryPyramid:
 
         return consolidated_count
 
-    def get_memory_statistics(self) -> Dict[str, Any]:
+    async def consolidate_by_age(self):
+        """Consolidate memories based on age"""
+        # Trigger consolidation for all tiers
+        for tier in MemoryTier:
+            await self.consolidate_memories(tier, strategy="auto")
+
+    async def compress_memories(self, memory_ids: List[str], compression_summary: str) -> Optional[MemoryNode]:
+        """Compress multiple memories into a single summary memory"""
+        # Retrieve all memories
+        memories = []
+        for mid in memory_ids:
+            mem = await self.retrieve_memory(mid)
+            if mem:
+                memories.append(mem)
+        
+        if not memories:
+            return None
+            
+        # Create new compressed memory
+        compressed_content = {
+            "summary": compression_summary,
+            "original_count": len(memories),
+            "compressed_ids": memory_ids
+        }
+        
+        # Store in same tier as first memory or appropriate tier
+        target_tier = memories[0].tier if memories else MemoryTier.ARCHIVE
+        
+        new_id = await self.store_memory(
+            content=compressed_content,
+            memory_type=MemoryType.SEMANTIC, # Or appropriate type
+            tier=target_tier,
+            metadata={"is_compressed_summary": True}
+        )
+        
+        # Mark original memories as compressed
+        for memory in memories:
+            memory.metadata['is_compressed'] = True
+            await self.update_memory(memory)
+            
+        return await self.retrieve_memory(new_id)
+
+    async def get_memory_statistics(self) -> Dict[str, Any]:
         """Get comprehensive memory system statistics"""
 
         with self._lock:
             stats = {
+                'total_memories': self.memory_metrics['total_nodes'],
                 'total_nodes': self.memory_metrics['total_nodes'],
                 'tier_distributions': dict(self.memory_metrics['tier_distributions']),
                 'tier_capacities': {tier.value: capacity for tier, capacity in self.tier_capacities.items()},
@@ -455,6 +612,97 @@ class HierarchicalMemoryPyramid:
             }
 
         return stats
+
+    async def get_memories_by_tier(self, tier: MemoryTier) -> List[MemoryNode]:
+        """Get all memories in a specific tier"""
+        with self._lock:
+            return list(self.memory_tiers[tier].values())
+
+    async def get_memories_by_importance(self, min_importance: float) -> List[MemoryNode]:
+        """Get memories with importance score above threshold"""
+        results = []
+        with self._lock:
+            for tier in MemoryTier:
+                for memory in self.memory_tiers[tier].values():
+                    if memory.importance >= min_importance:
+                        results.append(memory)
+        return sorted(results, key=lambda m: m.importance, reverse=True)
+
+    async def get_most_accessed_memories(self, limit: int = 10) -> List[MemoryNode]:
+        """Get most frequently accessed memories"""
+        results = []
+        with self._lock:
+            for tier in MemoryTier:
+                results.extend(self.memory_tiers[tier].values())
+        return sorted(results, key=lambda m: m.access_count, reverse=True)[:limit]
+
+    async def get_child_memories(self, parent_id: str) -> List[MemoryNode]:
+        """Get child memories for a parent node"""
+        # This implementation assumes child_nodes attribute is populated or we search
+        # Since we don't have a direct index, we search all (inefficient but works for now)
+        # Or better, we rely on parent_nodes in children if we had an index.
+        # But MemoryNode has child_nodes list.
+        parent = await self.retrieve_memory(parent_id)
+        if not parent:
+            return []
+        
+        children = []
+        for child_id in parent.child_nodes:
+            child = await self.retrieve_memory(child_id)
+            if child:
+                children.append(child)
+        return children
+
+    async def search_memories_by_type(self, memory_type: MemoryType) -> List[MemoryNode]:
+        """Search memories by type"""
+        return await self.search_memories(query={}, memory_type=memory_type)
+
+    async def cleanup_low_importance(self):
+        """Cleanup low importance memories from archive"""
+        # Simplified implementation
+        with self._lock:
+            archive = self.memory_tiers[MemoryTier.ARCHIVE]
+            to_remove = []
+            for node_id, memory in archive.items():
+                if memory.importance < 0.2:
+                    to_remove.append(node_id)
+            
+            for node_id in to_remove:
+                del archive[node_id]
+
+    async def export_memories(self, path: Path):
+        """Export memories to JSON file"""
+        export_data = []
+        with self._lock:
+            for tier in MemoryTier:
+                for memory in self.memory_tiers[tier].values():
+                    export_data.append(memory.to_dict())
+        
+        with open(path, 'w') as f:
+            json.dump(export_data, f, indent=2)
+
+    async def import_memories(self, path: Path):
+        """Import memories from JSON file"""
+        if not path.exists():
+            return
+            
+        with open(path, 'r') as f:
+            import_data = json.load(f)
+            
+        for data in import_data:
+            memory = MemoryNode.from_dict(data)
+            with self._lock:
+                self.memory_tiers[memory.tier][memory.node_id] = memory
+                self._update_indices(memory)
+                
+        return len(import_data)
+
+    async def update_memory(self, memory: MemoryNode):
+        """Update an existing memory node"""
+        with self._lock:
+            if memory.node_id in self.memory_tiers[memory.tier]:
+                self.memory_tiers[memory.tier][memory.node_id] = memory
+                # Update indices if needed (simplified)
 
     # Internal methods
 
@@ -524,19 +772,32 @@ class HierarchicalMemoryPyramid:
         score = 0.0
 
         # Content similarity (simplified)
-        for key, value in query.items():
-            if key in memory.content:
-                if memory.content[key] == value:
+        if isinstance(query, str):
+            # String query
+            if isinstance(memory.content, str):
+                if query.lower() in memory.content.lower():
                     score += 1.0
-                elif isinstance(value, str) and isinstance(memory.content[key], str):
-                    # Simple substring matching
-                    if value.lower() in memory.content[key].lower():
-                        score += 0.5
+            elif isinstance(memory.content, dict):
+                for key, value in memory.content.items():
+                    if isinstance(value, str) and query.lower() in value.lower():
+                        score += 1.0
+        else:
+            # Dict query
+            if isinstance(memory.content, dict):
+                for key, value in query.items():
+                    if key in memory.content:
+                        if memory.content[key] == value:
+                            score += 1.0
+                        elif isinstance(value, str) and isinstance(memory.content[key], str):
+                            # Simple substring matching
+                            if value.lower() in memory.content[key].lower():
+                                score += 0.5
 
         # Metadata matching
-        for key, value in query.items():
-            if key in memory.metadata and memory.metadata[key] == value:
-                score += 0.5
+        if isinstance(query, dict):
+            for key, value in query.items():
+                if key in memory.metadata and memory.metadata[key] == value:
+                    score += 0.5
 
         # Boost score based on priority
         priority_boost = {
@@ -585,7 +846,7 @@ class HierarchicalMemoryPyramid:
         eligible_memories = self._filter_memories_by_conditions(memories, pattern.conditions)
 
         # Apply retention policy
-        retained_count = int(len(eligible_memories) * pattern.retention_policy['keep_percentage'] / 100)
+        retained_count = math.ceil(len(eligible_memories) * pattern.retention_policy['keep_percentage'] / 100)
         memories_to_consolidate = self._select_memories_for_consolidation(eligible_memories, retained_count, pattern.strategy)
 
         # Move memories to target tier
@@ -720,6 +981,10 @@ class HierarchicalMemoryPyramid:
             if age_days >= 7 and memory.access_count >= 10:
                 should_promote = True
                 target_tier = MemoryTier.LONG_TERM
+            # Recall to working memory if very hot
+            elif memory.access_count >= 10:
+                should_promote = True
+                target_tier = MemoryTier.WORKING
 
         if should_promote:
             if self._move_memory_to_tier(memory, target_tier):
@@ -746,7 +1011,7 @@ class HierarchicalMemoryPyramid:
     def _background_processing_loop(self):
         """Background processing loop for maintenance tasks"""
 
-        while self._background_active:
+        while not self._stop_event.is_set():
             try:
                 # Check for consolidation needs
                 self._check_consolidation_needs()
@@ -757,15 +1022,17 @@ class HierarchicalMemoryPyramid:
                 # Periodic cleanup
                 self._cleanup_expired_indices()
 
-                # Sleep between processing cycles
-                time.sleep(30)  # 30 seconds
+                # Sleep between processing cycles (interruptible)
+                if self._stop_event.wait(timeout=1): # Reduced check interval
+                    break
 
             except Exception as e:
                 self.telemetry.log_error(
                     f"Error in memory pyramid background processing: {e}",
                     'hierarchical_memory_pyramid'
                 )
-                time.sleep(30)
+                if self._stop_event.wait(timeout=5):
+                    break
 
     def _check_consolidation_needs(self):
         """Check if any tier needs consolidation"""
@@ -801,7 +1068,10 @@ class HierarchicalMemoryPyramid:
     def _init_persistent_storage(self):
         """Initialize persistent storage for memories"""
 
-        self.db_path = self.storage_path / "memory_pyramid.db"
+        if self.db_path_override:
+            self.db_path = self.db_path_override
+        else:
+            self.db_path = self.storage_path / "memory_pyramid.db"
 
         # Create database schema
         with sqlite3.connect(str(self.db_path)) as conn:
@@ -820,7 +1090,8 @@ class HierarchicalMemoryPyramid:
                     child_nodes TEXT DEFAULT '',
                     related_nodes TEXT DEFAULT '',
                     embedding BLOB,
-                    compression_ratio REAL DEFAULT 1.0
+                    compression_ratio REAL DEFAULT 1.0,
+                    importance REAL DEFAULT 0.5
                 )
             """)
 
@@ -853,8 +1124,8 @@ class HierarchicalMemoryPyramid:
                             node_id, tier, memory_type, priority, content, metadata,
                             creation_time, last_accessed, access_count,
                             parent_nodes, child_nodes, related_nodes,
-                            embedding, compression_ratio
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            embedding, compression_ratio, importance
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         memory.node_id,
                         memory.tier.value,
@@ -869,7 +1140,8 @@ class HierarchicalMemoryPyramid:
                         json.dumps(memory.child_nodes),
                         json.dumps(memory.related_nodes),
                         pickle.dumps(memory.embedding) if memory.embedding else None,
-                        memory.compression_ratio
+                        memory.compression_ratio,
+                        memory.importance
                     ))
 
         self.telemetry.log_info(
@@ -892,7 +1164,7 @@ class HierarchicalMemoryPyramid:
                 SELECT node_id, tier, memory_type, priority, content, metadata,
                        creation_time, last_accessed, access_count,
                        parent_nodes, child_nodes, related_nodes,
-                       embedding, compression_ratio
+                       embedding, compression_ratio, importance
                 FROM memory_nodes
             """)
 
@@ -912,7 +1184,8 @@ class HierarchicalMemoryPyramid:
                         child_nodes=json.loads(row[10]) if row[10] else [],
                         related_nodes=json.loads(row[11]) if row[11] else [],
                         embedding=pickle.loads(row[12]) if row[12] else None,
-                        compression_ratio=row[13] if row[13] else 1.0
+                        compression_ratio=row[13] if row[13] else 1.0,
+                        importance=row[14] if len(row) > 14 else 0.5
                     )
 
                     # Add to appropriate tier

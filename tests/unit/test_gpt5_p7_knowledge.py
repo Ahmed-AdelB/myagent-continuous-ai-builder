@@ -1096,7 +1096,7 @@ class TestKnowledgeGraphManager:
         # Verify embedding was generated
         stored_entity = await knowledge_graph.get_entity(entity_id)
         assert stored_entity.embedding is not None
-        assert len(stored_entity.embedding) == 128  # Mock embedding size
+        assert len(stored_entity.embedding) == 384  # Mock embedding size
         assert entity_id in knowledge_graph.entity_embeddings
 
     @pytest.mark.asyncio

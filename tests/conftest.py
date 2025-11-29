@@ -6,6 +6,7 @@ import asyncio
 import os
 import tempfile
 import pytest
+import pytest_asyncio
 from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, Any, List
 from datetime import datetime
@@ -46,12 +47,7 @@ import numpy as np
 
 # ===================== SCOPE CONFIGURATION =====================
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+
 
 
 # ===================== TEMPORARY RESOURCES =====================
@@ -229,8 +225,8 @@ async def error_knowledge_graph(temp_database):
 
 # ===================== GPT-5 PRIORITY FIXTURES =====================
 
-@pytest.fixture
-async def memory_pyramid(temp_database):
+@pytest_asyncio.fixture(scope="function")
+async def memory_pyramid_instance(temp_database):
     """Create hierarchical memory pyramid for testing."""
     pyramid = HierarchicalMemoryPyramid(database_path=temp_database)
     await pyramid.initialize()

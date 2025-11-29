@@ -14,9 +14,9 @@ from core.security.security_compliance_scanner import (
     SecurityComplianceScanner,
     VulnerabilityType,
     ComplianceFramework,
-    SecurityIssue,
-    ScanResult,
-    RiskLevel
+    SecurityVulnerability,
+    SecurityScanResult,
+    SecurityLevel
 )
 
 
@@ -30,15 +30,12 @@ class TestSecurityComplianceScanner:
     async def security_scanner(self):
         """Create security scanner instance for testing"""
         scanner = SecurityComplianceScanner()
-        await scanner.initialize()
         yield scanner
-        await scanner.cleanup()
 
     @pytest.mark.asyncio
     async def test_scanner_initialization(self):
         """Test security scanner initialization"""
         scanner = SecurityComplianceScanner()
-        await scanner.initialize()
 
         # Verify vulnerability patterns loaded
         assert len(scanner.vulnerability_patterns) > 0
@@ -51,7 +48,7 @@ class TestSecurityComplianceScanner:
         assert ComplianceFramework.OWASP in scanner.compliance_frameworks
         assert ComplianceFramework.GDPR in scanner.compliance_frameworks
 
-        await scanner.cleanup()
+
 
     @pytest.mark.asyncio
     async def test_sql_injection_detection(self, security_scanner):
@@ -311,27 +308,27 @@ def render_user_input(data):
         """Test OWASP compliance framework validation"""
         # Create scan results with various vulnerabilities
         issues = [
-            SecurityIssue(
+            SecurityVulnerability(
                 vulnerability_type=VulnerabilityType.SQL_INJECTION,
-                severity=RiskLevel.HIGH,
+                severity=SecurityLevel.HIGH,
                 description="SQL injection vulnerability",
                 line_number=10
             ),
-            SecurityIssue(
+            SecurityVulnerability(
                 vulnerability_type=VulnerabilityType.XSS,
-                severity=RiskLevel.MEDIUM,
+                severity=SecurityLevel.MEDIUM,
                 description="XSS vulnerability",
                 line_number=15
             ),
-            SecurityIssue(
+            SecurityVulnerability(
                 vulnerability_type=VulnerabilityType.HARDCODED_SECRETS,
-                severity=RiskLevel.CRITICAL,
+                severity=SecurityLevel.CRITICAL,
                 description="Hardcoded API key",
                 line_number=5
             )
         ]
 
-        scan_result = ScanResult(
+        scan_result = SecurityScanResult(
             file_path="/test/file.py",
             issues=issues,
             scan_timestamp=pytest.approx(1234567890)
@@ -369,7 +366,7 @@ def render_user_input(data):
             all_issues.extend(issues)
 
         # Create scan result
-        scan_result = ScanResult(
+        scan_result = SecurityScanResult(
             file_path="/test/gdpr_test.py",
             issues=all_issues,
             scan_timestamp=pytest.approx(1234567890)
@@ -390,23 +387,23 @@ def render_user_input(data):
         """Test PCI-DSS compliance framework validation"""
         # Create issues related to payment card data
         issues = [
-            SecurityIssue(
+            SecurityVulnerability(
                 vulnerability_type=VulnerabilityType.HARDCODED_SECRETS,
-                severity=RiskLevel.CRITICAL,
+                severity=SecurityLevel.CRITICAL,
                 description="Hardcoded payment API key",
                 line_number=5,
                 context="payment_api_key = 'pk_test_123456'"
             ),
-            SecurityIssue(
+            SecurityVulnerability(
                 vulnerability_type=VulnerabilityType.INSECURE_CRYPTO,
-                severity=RiskLevel.HIGH,
+                severity=SecurityLevel.HIGH,
                 description="Weak encryption for payment data",
                 line_number=20,
                 context="hashlib.md5(credit_card_number)"
             )
         ]
 
-        scan_result = ScanResult(
+        scan_result = SecurityScanResult(
             file_path="/test/payment.py",
             issues=issues,
             scan_timestamp=pytest.approx(1234567890)
@@ -427,29 +424,29 @@ def render_user_input(data):
         """Test security risk assessment calculation"""
         # Create issues with different severity levels
         issues = [
-            SecurityIssue(
+            SecurityVulnerability(
                 vulnerability_type=VulnerabilityType.HARDCODED_SECRETS,
-                severity=RiskLevel.CRITICAL,
+                severity=SecurityLevel.CRITICAL,
                 description="Critical secret exposure"
             ),
-            SecurityIssue(
+            SecurityVulnerability(
                 vulnerability_type=VulnerabilityType.SQL_INJECTION,
-                severity=RiskLevel.HIGH,
+                severity=SecurityLevel.HIGH,
                 description="SQL injection risk"
             ),
-            SecurityIssue(
+            SecurityVulnerability(
                 vulnerability_type=VulnerabilityType.XSS,
-                severity=RiskLevel.MEDIUM,
+                severity=SecurityLevel.MEDIUM,
                 description="XSS vulnerability"
             ),
-            SecurityIssue(
+            SecurityVulnerability(
                 vulnerability_type=VulnerabilityType.WEAK_RANDOM,
-                severity=RiskLevel.LOW,
+                severity=SecurityLevel.LOW,
                 description="Weak random number generation"
             )
         ]
 
-        scan_result = ScanResult(
+        scan_result = SecurityScanResult(
             file_path="/test/risk_assessment.py",
             issues=issues,
             scan_timestamp=pytest.approx(1234567890)
@@ -463,30 +460,30 @@ def render_user_input(data):
         assert risk_assessment.high_issues == 1
         assert risk_assessment.medium_issues == 1
         assert risk_assessment.low_issues == 1
-        assert risk_assessment.overall_risk_level in [RiskLevel.HIGH, RiskLevel.CRITICAL]
+        assert risk_assessment.overall_risk_level in [SecurityLevel.HIGH, SecurityLevel.CRITICAL]
 
     @pytest.mark.asyncio
     async def test_security_report_generation(self, security_scanner, tmp_path):
         """Test comprehensive security report generation"""
         # Create multiple scan results
         scan_results = [
-            ScanResult(
+            SecurityScanResult(
                 file_path="/app/main.py",
                 issues=[
-                    SecurityIssue(
+                    SecurityVulnerability(
                         vulnerability_type=VulnerabilityType.SQL_INJECTION,
-                        severity=RiskLevel.HIGH,
+                        severity=SecurityLevel.HIGH,
                         description="SQL injection in user query"
                     )
                 ],
                 scan_timestamp=1234567890
             ),
-            ScanResult(
+            SecurityScanResult(
                 file_path="/app/utils.py",
                 issues=[
-                    SecurityIssue(
+                    SecurityVulnerability(
                         vulnerability_type=VulnerabilityType.HARDCODED_SECRETS,
-                        severity=RiskLevel.CRITICAL,
+                        severity=SecurityLevel.CRITICAL,
                         description="API key hardcoded"
                     )
                 ],
@@ -552,7 +549,7 @@ def render_user_input(data):
             "name": "Custom API Exposure",
             "pattern": r"app\.run\(host=['\"]0\.0\.0\.0['\"]",
             "description": "Flask app exposed to all interfaces",
-            "severity": RiskLevel.MEDIUM
+            "severity": SecurityLevel.MEDIUM
         }
 
         # Add pattern to scanner
@@ -631,30 +628,32 @@ def vulnerable_query_{i}(id):
 @pytest.mark.unit
 @pytest.mark.gpt5
 @pytest.mark.security
-class TestSecurityIssue:
-    """Test suite for SecurityIssue class"""
+class TestSecurityVulnerability:
+    """Test suite for SecurityVulnerability class"""
 
     def test_security_issue_creation(self):
         """Test security issue creation and properties"""
-        issue = SecurityIssue(
-            vulnerability_type=VulnerabilityType.SQL_INJECTION,
-            severity=RiskLevel.HIGH,
+        issue = SecurityVulnerability(
+            id="test_vuln_1",
+            type=VulnerabilityType.SQL_INJECTION,
+            severity=SecurityLevel.HIGH,
+            title="SQL Injection",
             description="SQL injection detected",
             line_number=42,
-            context="query = f'SELECT * FROM users WHERE id = {user_id}'"
+            code_snippet="query = f'SELECT * FROM users WHERE id = {user_id}'"
         )
 
-        assert issue.vulnerability_type == VulnerabilityType.SQL_INJECTION
-        assert issue.severity == RiskLevel.HIGH
+        assert issue.type == VulnerabilityType.SQL_INJECTION
+        assert issue.severity == SecurityLevel.HIGH
         assert issue.description == "SQL injection detected"
         assert issue.line_number == 42
-        assert "SELECT" in issue.context
+        assert "SELECT" in issue.code_snippet
 
     def test_security_issue_serialization(self):
         """Test security issue serialization"""
-        issue = SecurityIssue(
+        issue = SecurityVulnerability(
             vulnerability_type=VulnerabilityType.XSS,
-            severity=RiskLevel.MEDIUM,
+            severity=SecurityLevel.MEDIUM,
             description="XSS vulnerability"
         )
 
@@ -663,11 +662,11 @@ class TestSecurityIssue:
 
         assert isinstance(issue_dict, dict)
         assert issue_dict["vulnerability_type"] == VulnerabilityType.XSS.value
-        assert issue_dict["severity"] == RiskLevel.MEDIUM.value
+        assert issue_dict["severity"] == SecurityLevel.MEDIUM.value
         assert issue_dict["description"] == "XSS vulnerability"
 
         # Convert back from dictionary
-        restored_issue = SecurityIssue.from_dict(issue_dict)
+        restored_issue = SecurityVulnerability.from_dict(issue_dict)
 
         assert restored_issue.vulnerability_type == issue.vulnerability_type
         assert restored_issue.severity == issue.severity
@@ -677,20 +676,20 @@ class TestSecurityIssue:
 @pytest.mark.unit
 @pytest.mark.gpt5
 @pytest.mark.security
-class TestRiskLevelEnum:
+class TestSecurityLevelEnum:
     """Test security risk level enumeration"""
 
     def test_risk_level_values(self):
         """Test risk level enumeration values"""
-        assert RiskLevel.CRITICAL.value == "critical"
-        assert RiskLevel.HIGH.value == "high"
-        assert RiskLevel.MEDIUM.value == "medium"
-        assert RiskLevel.LOW.value == "low"
+        assert SecurityLevel.CRITICAL.value == "critical"
+        assert SecurityLevel.HIGH.value == "high"
+        assert SecurityLevel.MEDIUM.value == "medium"
+        assert SecurityLevel.LOW.value == "low"
 
     def test_risk_level_ordering(self):
         """Test risk level ordering for prioritization"""
         # Risk levels should be orderable for prioritization
-        levels = [RiskLevel.LOW, RiskLevel.CRITICAL, RiskLevel.MEDIUM, RiskLevel.HIGH]
+        levels = [SecurityLevel.LOW, SecurityLevel.CRITICAL, SecurityLevel.MEDIUM, SecurityLevel.HIGH]
 
         # Sort by severity (this depends on implementation)
         # The exact ordering might need adjustment based on enum implementation
