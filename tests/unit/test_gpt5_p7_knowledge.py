@@ -230,7 +230,7 @@ class MockKnowledgeGraphManager:
         visited = set([entity_id])
 
         async def _traverse(current_id: str, depth: int):
-            if depth > max_depth:
+            if depth >= max_depth:
                 return
 
             relationship_ids = self.relationship_index.get(current_id, [])
