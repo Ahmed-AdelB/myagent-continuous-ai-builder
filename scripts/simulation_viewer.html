@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Continuous AI Builder - Live Simulation</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #38bdf8;
+            --success-color: #4ade80;
+            --warning-color: #facc15;
+            --error-color: #f87171;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #334155;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; font-weight: 700; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .status-badge {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent-color);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+
+        .agents-panel {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+
+        .agent-card {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .agent-card.active {
+            background: rgba(56, 189, 248, 0.1);
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .agent-icon { font-size: 1.2rem; margin-right: 12px; }
+        .agent-name { font-weight: 600; font-size: 0.9rem; }
+        .agent-status { margin-left: auto; font-size: 0.75rem; color: var(--text-secondary); }
+
+        .activity-feed {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+            height: 600px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-entry {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            animation: fadeIn 0.5s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .log-entry.architect { border-color: #c084fc; }
+        .log-entry.coder { border-color: #38bdf8; }
+        .log-entry.tester { border-color: #4ade80; }
+        .log-entry.debugger { border-color: #f87171; }
+        .log-entry.system { border-color: #94a3b8; }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .log-content { font-size: 0.95rem; line-height: 1.5; }
+
+        .metrics-grid {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #334155;
+        }
+
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+        .metric-label { font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Continuous AI Builder</h1>
+            <div class="status-badge" id="system-status">Initializing...</div>
+        </div>
+
+        <div class="agents-panel">
+            <h3>Active Agents</h3>
+            <div class="agent-card" id="agent-architect">
+                <span class="agent-icon">🏗️</span>
+                <span class="agent-name">Architect</span>
+                <span class="agent-status">Idle</span>
+            </div>
+            <div class="agent-card" id="agent-coder">
+                <span class="agent-icon">💻</span>
+                <span class="agent-name">Coder</span>
+                <span class="agent-status">Idle</span>
+            </div>
+            <div class="agent-card" id="agent-tester">
+                <span class="agent-icon">🧪</span>
+                <span class="agent-name">Tester</span>
+                <span class="agent-status">Idle</span>
+            </div>
+            <div class="agent-card" id="agent-debugger">
+                <span class="agent-icon">🐞</span>
+                <span class="agent-name">Debugger</span>
+                <span class="agent-status">Idle</span>
+            </div>
+        </div>
+
+        <div class="activity-feed" id="activity-feed">
+            <!-- Logs will appear here -->
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="metric-coverage">0%</div>
+                <div class="metric-label">Test Coverage</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="metric-security">0%</div>
+                <div class="metric-label">Security Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="metric-quality">0%</div>
+                <div class="metric-label">Code Quality</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="metric-iteration">0</div>
+                <div class="metric-label">Iteration</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const feed = document.getElementById('activity-feed');
+        let lastLogIndex = 0;
+
+        function addLog(entry) {
+            const div = document.createElement('div');
+            div.className = `log-entry ${entry.agent.toLowerCase()}`;
+            div.innerHTML = `
+                <div class="log-header">
+                    <span>${entry.agent}</span>
+                    <span>${entry.timestamp}</span>
+                </div>
+                <div class="log-content">${entry.message}</div>
+            `;
+            feed.appendChild(div);
+            feed.scrollTop = feed.scrollHeight;
+
+            // Highlight active agent
+            document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
+            const agentCard = document.getElementById(`agent-${entry.agent.toLowerCase()}`);
+            if (agentCard) {
+                agentCard.classList.add('active');
+                agentCard.querySelector('.agent-status').innerText = 'Working...';
+                setTimeout(() => {
+                    agentCard.classList.remove('active');
+                    agentCard.querySelector('.agent-status').innerText = 'Idle';
+                }, 2000);
+            }
+        }
+
+        function updateMetrics(metrics) {
+            if (!metrics) return;
+            document.getElementById('metric-coverage').innerText = metrics.coverage + '%';
+            document.getElementById('metric-security').innerText = metrics.security + '%';
+            document.getElementById('metric-quality').innerText = metrics.quality + '%';
+            document.getElementById('metric-iteration').innerText = metrics.iteration;
+        }
+
+        async function pollEvents() {
+            try {
+                const response = await fetch('simulation_events.json');
+                const data = await response.json();
+                
+                // Process new logs
+                if (data.logs && data.logs.length > lastLogIndex) {
+                    for (let i = lastLogIndex; i < data.logs.length; i++) {
+                        addLog(data.logs[i]);
+                    }
+                    lastLogIndex = data.logs.length;
+                }
+
+                // Update metrics
+                if (data.metrics) {
+                    updateMetrics(data.metrics);
+                }
+                
+                // Update status
+                if (data.status) {
+                    document.getElementById('system-status').innerText = data.status;
+                }
+
+            } catch (e) {
+                console.log("Waiting for simulation data...");
+            }
+        }
+
+        setInterval(pollEvents, 1000);
+    </script>
+</body>
+</html>

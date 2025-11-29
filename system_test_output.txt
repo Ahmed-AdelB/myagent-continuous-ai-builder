@@ -1,0 +1,275 @@
+/Users/apple/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.1.1, pluggy-1.6.0 -- /Library/Developer/CommandLineTools/usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder
+configfile: pytest.ini
+plugins: asyncio-0.23.5, anyio-4.12.0, langsmith-0.4.37, cov-4.1.0
+asyncio: mode=strict
+collecting ... collected 1 item
+
+tests/system/test_agent_logic_simulation.py::test_end_to_end_project_creation FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_end_to_end_project_creation _______________________
+
+mock_db = <MagicMock name='db_manager' id='5079643808'>
+mock_init_db = <AsyncMock name='init_database' id='5079853184'>
+mock_llm = <MagicMock name='ChatOpenAI' id='5079873808'>
+
+    @pytest.mark.asyncio
+    async def test_end_to_end_project_creation(mock_db, mock_init_db, mock_llm):
+        """
+        Simulate full user flow:
+        1. Create Project (Calculator)
+        2. Verify Orchestrator starts
+        3. Check Agents are assigned
+        4. Check Metrics are initialized
+        """
+    
+        # 1. Create Project
+        project_payload = {
+            "name": "Calculator App",
+            "description": "A simple calculator with add, subtract, multiply, divide",
+            "requirements": ["Must be written in Python", "Must have unit tests"],
+            "target_metrics": {"test_coverage": 90.0},
+            "max_iterations": 10
+        }
+    
+        response = client.post("/projects", json=project_payload)
+        assert response.status_code == 200
+        data = response.json()
+    
+        assert data["name"] == "Calculator App"
+        assert "id" in data
+        project_id = data["id"]
+        assert data["state"] == "initializing"
+    
+        # 2. Verify Project Status
+        response = client.get(f"/projects/{project_id}")
+        assert response.status_code == 200
+        status_data = response.json()
+        assert status_data["id"] == project_id
+        assert status_data["name"] == "Calculator App"
+    
+        # 3. Verify Agents are Initialized
+        # The orchestrator runs in background, so agents might take a moment.
+        import time
+        agents = []
+        for _ in range(20):  # Wait up to 10 seconds
+            response = client.get(f"/projects/{project_id}/agents")
+            if response.status_code == 200:
+                agents = response.json()
+                if agents:
+                    break
+            time.sleep(0.5)
+    
+>       assert len(agents) > 0, "Agents were not initialized in time"
+E       AssertionError: Agents were not initialized in time
+E       assert 0 > 0
+E        +  where 0 = len([])
+
+tests/system/test_agent_logic_simulation.py:98: AssertionError
+----------------------------- Captured stdout call -----------------------------
+[32m2025-11-30 03:27:46[0m | [1mINFO    [0m | [36mcore.orchestrator.guardrails[0m:[36m__init__[0m:[36m78[0m - [1mGuardrail system initialized. Autonomous mode: True[0m
+[32m2025-11-30 03:27:46[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m__init__[0m:[36m184[0m - [1mInitialized ContinuousDirector for project: Calculator App[0m
+[32m2025-11-30 03:27:46[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m__init__[0m:[36m185[0m - [1mGuardrails enabled - dangerous operations will be blocked[0m
+[32m2025-11-30 03:27:46[0m | [1mINFO    [0m | [36mapi.main[0m:[36mcreate_project[0m:[36m193[0m - [1mCreated project Calculator App with ID bac1b4f6-a1ae-4393-b4a3-b866d94f24d3[0m
+[32m2025-11-30 03:27:46[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36mstart[0m:[36m189[0m - [1mStarting continuous development process...[0m
+[32m2025-11-30 03:27:46[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m_initialize_components[0m:[36m245[0m - [1mInitializing system components...[0m
+[32m2025-11-30 03:27:46[0m | [1mINFO    [0m | [36mcore.memory.project_ledger[0m:[36m_initialize_database[0m:[36m122[0m - [1mInitialized project ledger database: persistence/database/Calculator App_ledger.db[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.memory.cache_eviction[0m:[36m__init__[0m:[36m108[0m - [1mCache eviction manager initialized: policy=hybrid, max_entries=10000, max_size=500MB[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.memory.error_knowledge_graph[0m:[36m_initialize_database[0m:[36m153[0m - [1mInitialized error knowledge database[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.memory.error_knowledge_graph[0m:[36m_load_graph[0m:[36m205[0m - [1mLoaded knowledge graph with 0 errors and 0 solutions[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m_initialize_agents[0m:[36m272[0m - [1mInitializing AI agents...[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.agents.base_agent[0m:[36m__init__[0m:[36m102[0m - [1mInitialized Code Generator agent: coder_agent (6ec8e3ee-de2f-442e-9e65-1a06b6c4ee7d)[0m
+[32m2025-11-30 03:27:48[0m | [31m[1mERROR   [0m | [36mcore.orchestrator.continuous_director[0m:[36mstart[0m:[36m235[0m - [31m[1mCritical error in continuous director: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable[0m
+[32m2025-11-30 03:27:48[0m | [31m[1mERROR   [0m | [36mcore.orchestrator.continuous_director[0m:[36m_recover_from_error[0m:[36m930[0m - [31m[1mAttempting error recovery: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m_create_checkpoint[0m:[36m498[0m - [1mCreating checkpoint...[0m
+[32m2025-11-30 03:27:48[0m | [32m[1mSUCCESS [0m | [36mcore.orchestrator.continuous_director[0m:[36m_create_checkpoint[0m:[36m519[0m - [32m[1mCheckpoint created: persistence/snapshots/checkpoint_0.json[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m_load_project_state[0m:[36m625[0m - [1mLoading project state from checkpoint...[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m_load_project_state[0m:[36m653[0m - [1mLoaded state from checkpoint: iteration 0[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m_recover_from_error[0m:[36m948[0m - [1mSuccessfully recovered from error - restored to planning state[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m_cleanup[0m:[36m1169[0m - [1mCleaning up resources...[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m_create_checkpoint[0m:[36m498[0m - [1mCreating checkpoint...[0m
+[32m2025-11-30 03:27:48[0m | [32m[1mSUCCESS [0m | [36mcore.orchestrator.continuous_director[0m:[36m_create_checkpoint[0m:[36m519[0m - [32m[1mCheckpoint created: persistence/snapshots/checkpoint_0.json[0m
+[32m2025-11-30 03:27:48[0m | [1mINFO    [0m | [36mcore.orchestrator.continuous_director[0m:[36m_cleanup[0m:[36m1179[0m - [1mCleanup completed[0m
+=============================== warnings summary ===============================
+../../../../Python/3.9/lib/python/site-packages/jupyter_client/connect.py:22
+  /Users/apple/Library/Python/3.9/lib/python/site-packages/jupyter_client/connect.py:22: DeprecationWarning: Jupyter is migrating its paths to use standard platformdirs
+  given by the platformdirs library.  To remove this warning and
+  see the appropriate new directories, set the environment variable
+  `JUPYTER_PLATFORM_DIRS=1` and then run `jupyter --paths`.
+  The use of platformdirs will be the default in `jupyter_core` v6
+    from jupyter_core.paths import jupyter_data_dir, jupyter_runtime_dir, secure_write
+
+../../../../Python/3.9/lib/python/site-packages/torch/nn/modules/transformer.py:20
+  /Users/apple/Library/Python/3.9/lib/python/site-packages/torch/nn/modules/transformer.py:20: UserWarning: Failed to initialize NumPy: _ARRAY_API not found (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:84.)
+    device: torch.device = torch.device(torch._C._get_default_device()),  # torch.device('cpu'),
+
+config/settings.py:19
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:19: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEBUG: bool = Field(default=False, env="DEBUG")
+
+config/settings.py:22
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:22: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
+
+config/settings.py:23
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:23: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_PORT: int = Field(default=8000, env="API_PORT")
+
+config/settings.py:24
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:24: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    API_WORKERS: int = Field(default=4, env="API_WORKERS")
+
+config/settings.py:25
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:25: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CORS_ORIGINS: List[str] = Field(
+
+config/settings.py:31
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:31: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_URL: str = Field(
+
+config/settings.py:35
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:35: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_POOL_SIZE: int = Field(default=20, env="DATABASE_POOL_SIZE")
+
+config/settings.py:36
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:36: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DATABASE_MAX_OVERFLOW: int = Field(default=10, env="DATABASE_MAX_OVERFLOW")
+
+config/settings.py:39
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:39: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
+
+config/settings.py:40
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:40: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    REDIS_MAX_CONNECTIONS: int = Field(default=50, env="REDIS_MAX_CONNECTIONS")
+
+config/settings.py:42
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:42: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("DATABASE_URL", pre=True, always=True)
+
+config/settings.py:55
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:55: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_HOST: str = Field(default="localhost", env="CHROMADB_HOST")
+
+config/settings.py:56
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:56: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PORT: int = Field(default=8000, env="CHROMADB_PORT")
+
+config/settings.py:57
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:57: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHROMADB_PATH: str = Field(
+
+config/settings.py:63
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:63: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
+
+config/settings.py:64
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:64: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    ANTHROPIC_API_KEY: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
+
+config/settings.py:65
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:65: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    OLLAMA_BASE_URL: str = Field(
+
+config/settings.py:71
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:71: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_LLM_PROVIDER: str = Field(default="openai", env="DEFAULT_LLM_PROVIDER")
+
+config/settings.py:72
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:72: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    DEFAULT_MODEL: str = Field(default="gpt-5-chat-latest", env="DEFAULT_MODEL")
+
+config/settings.py:73
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:73: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_TEMPERATURE: float = Field(default=0.7, env="LLM_TEMPERATURE")
+
+config/settings.py:74
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:74: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LLM_MAX_TOKENS: int = Field(default=2000, env="LLM_MAX_TOKENS")
+
+config/settings.py:77
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:77: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_TEST_COVERAGE: float = Field(default=95.0, env="TARGET_TEST_COVERAGE")
+
+config/settings.py:78
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:78: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_PERFORMANCE_SCORE: float = Field(
+
+config/settings.py:82
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:82: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_DOCUMENTATION_COVERAGE: float = Field(
+
+config/settings.py:86
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:86: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_CODE_QUALITY_SCORE: float = Field(
+
+config/settings.py:90
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:90: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_SECURITY_SCORE: float = Field(default=95.0, env="TARGET_SECURITY_SCORE")
+
+config/settings.py:91
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:91: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    TARGET_USER_SATISFACTION: float = Field(
+
+config/settings.py:97
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:97: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    MAX_AGENT_RETRIES: int = Field(default=3, env="MAX_AGENT_RETRIES")
+
+config/settings.py:98
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:98: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    AGENT_TIMEOUT_SECONDS: int = Field(default=300, env="AGENT_TIMEOUT_SECONDS")
+
+config/settings.py:99
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:99: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    CHECKPOINT_INTERVAL_HOURS: int = Field(
+
+config/settings.py:105
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:105: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    PERSISTENCE_DIR: Path = Field(
+
+config/settings.py:109
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:109: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    LOGS_DIR: Path = Field(default=Path("logs"), env="LOGS_DIR")
+
+config/settings.py:112
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:112: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    SECRET_KEY: str = Field(
+
+config/settings.py:116
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:116: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_ALGORITHM: str = Field(default="HS256", env="JWT_ALGORITHM")
+
+config/settings.py:117
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:117: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    JWT_EXPIRATION_MINUTES: int = Field(
+
+config/settings.py:123
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:123: PydanticDeprecatedSince20: Using extra keyword arguments on `Field` is deprecated and will be removed. Use `json_schema_extra` instead. (Extra keys: 'env'). Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    RATE_LIMIT_PER_MINUTE: int = Field(default=100, env="RATE_LIMIT_PER_MINUTE")
+
+config/settings.py:125
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:125: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("CORS_ORIGINS", pre=True)
+
+config/settings.py:132
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:132: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator("PERSISTENCE_DIR", "LOGS_DIR", pre=True)
+
+config/settings.py:13
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/config/settings.py:13: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class Settings(BaseSettings):
+
+tests/system/test_agent_logic_simulation.py::test_end_to_end_project_creation
+tests/system/test_agent_logic_simulation.py::test_end_to_end_project_creation
+  /Users/apple/Library/Mobile Documents/com~apple~CloudDocs/SProjects/myagent-continuous-ai-builder/core/orchestrator/continuous_director.py:504: PydanticDeprecatedSince20: The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    "metrics": self.metrics.dict(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/system/test_agent_logic_simulation.py::test_end_to_end_project_creation
+======================= 1 failed, 43 warnings in 12.96s ========================
