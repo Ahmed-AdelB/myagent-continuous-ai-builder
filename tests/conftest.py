@@ -13,6 +13,14 @@ from datetime import datetime
 import json
 import sqlite3
 from pathlib import Path
+import sys
+from unittest.mock import MagicMock
+
+# Mock openai to avoid version mismatch issues
+mock_openai = MagicMock()
+mock_openai.__spec__ = MagicMock()
+mock_openai.DefaultHttpxClient = object
+sys.modules["openai"] = mock_openai
 
 # Core imports
 from core.orchestrator.continuous_director import ContinuousDirector

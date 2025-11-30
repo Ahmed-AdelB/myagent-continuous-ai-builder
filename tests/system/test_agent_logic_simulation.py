@@ -4,7 +4,20 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock
 import json
 import uuid
+import os
 from datetime import datetime
+
+# Set dummy API key to avoid validation errors during import/init
+os.environ["OPENAI_API_KEY"] = "sk-dummy-key-for-testing"
+
+# Mock aiosqlite BEFORE importing modules that use it
+import sys
+mock_aiosqlite = MagicMock()
+mock_conn = AsyncMock()
+mock_conn.__aenter__.return_value = mock_conn
+mock_conn.__aexit__.return_value = None
+mock_aiosqlite.connect.return_value = mock_conn
+sys.modules["aiosqlite"] = mock_aiosqlite
 
 from api.main import app
 from core.orchestrator.continuous_director import ProjectState
@@ -58,11 +71,21 @@ async def test_end_to_end_project_creation(mock_db, mock_init_db, mock_llm):
     4. Check Metrics are initialized
     """
     
-    # 1. Create Project
+    # User requirements (from env vars or default)
+    project_name = os.getenv("TEST_PROJECT_NAME", "Calculator App")
+    project_desc = os.getenv("TEST_PROJECT_DESC", "A simple calculator with basic arithmetic operations")
+    
+    initial_requirements = [
+        f"Build a {project_name}",
+        project_desc,
+        "Include unit tests",
+        "Create documentation"
+    ]
+    
     project_payload = {
-        "name": "Calculator App",
-        "description": "A simple calculator with add, subtract, multiply, divide",
-        "requirements": ["Must be written in Python", "Must have unit tests"],
+        "name": project_name,
+        "description": project_desc,
+        "requirements": initial_requirements,
         "target_metrics": {"test_coverage": 90.0},
         "max_iterations": 10
     }
@@ -71,7 +94,7 @@ async def test_end_to_end_project_creation(mock_db, mock_init_db, mock_llm):
     assert response.status_code == 200
     data = response.json()
     
-    assert data["name"] == "Calculator App"
+    assert data["name"] == project_name
     assert "id" in data
     project_id = data["id"]
     assert data["state"] == "initializing"
@@ -81,7 +104,7 @@ async def test_end_to_end_project_creation(mock_db, mock_init_db, mock_llm):
     assert response.status_code == 200
     status_data = response.json()
     assert status_data["id"] == project_id
-    assert status_data["name"] == "Calculator App"
+    assert status_data["name"] == project_name
     
     # 3. Verify Agents are Initialized
     # The orchestrator runs in background, so agents might take a moment.
@@ -99,9 +122,9 @@ async def test_end_to_end_project_creation(mock_db, mock_init_db, mock_llm):
     
     # Should have core agents: Coder, Tester, Debugger, Architect
     agent_roles = [a["role"] for a in agents]
-    assert "architect" in agent_roles or "Architect" in agent_roles
-    assert "coder" in agent_roles or "Coder" in agent_roles
-    assert "tester" in agent_roles or "Tester" in agent_roles
+    assert "System Architect" in agent_roles
+    assert "Code Generator" in agent_roles
+    assert "Test Engineer" in agent_roles
     
     # 4. Verify Metrics
     response = client.get(f"/projects/{project_id}/metrics")
