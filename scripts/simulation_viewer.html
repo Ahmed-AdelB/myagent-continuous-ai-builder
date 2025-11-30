@@ -4,10 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Continuous AI Builder - Live Console</title>
+    <title>Continuous AI Builder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0f172a;
+            --sidebar-bg: #1e293b;
             --card-bg: #1e293b;
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
@@ -15,78 +17,144 @@
             --success-color: #4ade80;
             --warning-color: #facc15;
             --error-color: #f87171;
+            --border-color: #334155;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
             margin: 0;
-            padding: 20px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .container {
-            width: 100%;
-            max-width: 1200px;
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item {
+            padding: 12px;
+            margin-bottom: 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent-color);
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            height: 60px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 30px;
+            justify-content: space-between;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        /* Views */
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        /* Dashboard Grid */
+        .grid {
             display: grid;
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
         }
 
-        .header {
-            grid-column: 1 / -1;
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        /* Project List */
+        .project-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #334155;
+            cursor: pointer;
         }
 
-        h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(90deg, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .project-item:hover {
+            border-color: var(--accent-color);
         }
 
-        .status-badge {
-            background: rgba(56, 189, 248, 0.1);
-            color: var(--accent-color);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            border: 1px solid rgba(56, 189, 248, 0.2);
-        }
-
-        /* Input Panel */
-        .input-panel {
-            grid-column: 1 / -1;
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #334155;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        input {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid #334155;
+        /* Forms */
+        input,
+        textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
             color: white;
             padding: 10px;
             border-radius: 6px;
-            flex: 1;
-            font-size: 0.9rem;
+            margin-bottom: 10px;
+            box-sizing: border-box;
         }
 
         button {
@@ -97,276 +165,390 @@
             border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .agents-panel {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #334155;
-        }
-
-        .agent-card {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            margin-bottom: 10px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .agent-card.active {
-            background: rgba(56, 189, 248, 0.1);
-            border-left: 3px solid var(--accent-color);
-        }
-
-        .agent-icon {
-            font-size: 1.2rem;
-            margin-right: 12px;
-        }
-
-        .agent-name {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .agent-status {
-            margin-left: auto;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .activity-feed {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #334155;
-            height: 400px;
-            overflow-y: auto;
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-        }
-
-        .metric-card {
-            background-color: var(--card-bg);
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            border: 1px solid #334155;
-        }
-
-        .metric-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .metric-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-top: 5px;
         }
 
         /* Tabs */
         .tabs {
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 20px;
         }
 
         .tab {
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 6px;
+            padding: 10px 0;
             cursor: pointer;
-            font-size: 0.9rem;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
         }
 
         .tab.active {
-            background: var(--accent-color);
-            color: #0f172a;
-            font-weight: 600;
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+        }
+
+        /* Agent Cards */
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .agent-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .agent-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-active {
+            background: var(--success-color);
+        }
+
+        .status-idle {
+            background: var(--text-secondary);
+        }
+
+        /* Code Viewer */
+        .code-viewer {
+            background: #000;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre-wrap;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="container">
-        <div class="header">
-            <h1>Continuous AI Builder</h1>
-            <div class="status-badge" id="system-status">Ready</div>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">🚀 AI Builder</div>
+        <div class="nav-item active" onclick="switchView('dashboard')">Dashboard</div>
+        <div class="nav-item" onclick="switchView('projects')">Projects</div>
+        <div class="nav-item" onclick="switchView('settings')">Settings</div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+        <div class="top-bar">
+            <h2 id="page-title">Dashboard</h2>
+            <div id="connection-status" style="color: var(--success-color); font-size: 0.8rem;">● Connected</div>
         </div>
 
-        <div class="input-panel">
-            <input type="text" id="project-name" placeholder="Project Name (e.g. Finance App)">
-            <input type="text" id="project-desc" placeholder="Description (e.g. Track expenses)">
-            <button onclick="createProject()" id="build-btn">Create Project</button>
+        <div class="content-area">
+
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view active">
+                <div class="grid">
+                    <div class="card">
+                        <h3>Active Projects</h3>
+                        <div class="stat-value" id="total-projects">0</div>
+                    </div>
+                    <div class="card">
+                        <h3>Total Agents</h3>
+                        <div class="stat-value" id="total-agents">0</div>
+                    </div>
+                    <div class="card">
+                        <h3>System Health</h3>
+                        <div class="stat-value" style="color: var(--success-color)">100%</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 30px;">Quick Actions</h3>
+                <button onclick="switchView('projects'); showCreateModal()">+ New Project</button>
+            </div>
+
+            <!-- Projects View -->
+            <div id="view-projects" class="view">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <input type="text" placeholder="Search projects..." style="width: 300px;">
+                    <button onclick="showCreateModal()">Create Project</button>
+                </div>
+                <div id="projects-list">
+                    <!-- Project items will be injected here -->
+                </div>
+            </div>
+
+            <!-- Project Details View (Hidden by default) -->
+            <div id="view-project-details" class="view">
+                <button onclick="switchView('projects')"
+                    style="background: transparent; color: var(--text-secondary); padding: 0; margin-bottom: 20px;">←
+                    Back to Projects</button>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <div>
+                            <h1 id="detail-name" style="margin: 0;">Project Name</h1>
+                            <p id="detail-desc" style="color: var(--text-secondary);">Description</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="stat-value" id="detail-iteration">#0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">Iteration</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('overview')">Overview</div>
+                    <div class="tab" onclick="switchTab('agents')">Agents</div>
+                    <div class="tab" onclick="switchTab('code')">Code</div>
+                    <div class="tab" onclick="switchTab('tasks')">Tasks</div>
+                </div>
+
+                <div id="tab-overview" class="tab-content">
+                    <div class="grid">
+                        <div class="card">
+                            <h3>Test Coverage</h3>
+                            <div class="stat-value" id="metric-coverage">0%</div>
+                        </div>
+                        <div class="card">
+                            <h3>Security Score</h3>
+                            <div class="stat-value" id="metric-security">0%</div>
+                        </div>
+                        <div class="card">
+                            <h3>Code Quality</h3>
+                            <div class="stat-value" id="metric-quality">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-agents" class="tab-content" style="display: none;">
+                    <div class="agent-grid" id="detail-agents-list"></div>
+                </div>
+
+                <div id="tab-code" class="tab-content" style="display: none;">
+                    <div style="display: flex; gap: 20px;">
+                        <div id="file-list" style="width: 200px; border-right: 1px solid var(--border-color);">
+                            <div style="padding: 10px; color: var(--text-secondary);">Loading files...</div>
+                        </div>
+                        <div style="flex: 1;">
+                            <div class="code-viewer" id="code-content"># Select a file to view code...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-tasks" class="tab-content" style="display: none;">
+                    <button onclick="createTask()">+ Add Task</button>
+                    <div id="tasks-list" style="margin-top: 20px;">
+                        <div class="card">No tasks yet.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="view-settings" class="view">
+                <h2>Settings</h2>
+                <div class="card">
+                    <p>API Endpoint: http://localhost:8000</p>
+                    <p>Version: 1.0.0</p>
+                </div>
+            </div>
+
         </div>
+    </div>
 
-        <div class="agents-panel">
-            <h3>Agents</h3>
-            <div id="agents-list">
-                <div class="agent-card"><span class="agent-name">Waiting for project...</span></div>
-            </div>
-        </div>
-
-        <div class="main-content">
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-value" id="metric-coverage">0%</div>
-                    <div class="metric-label">Test Coverage</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="metric-security">0%</div>
-                    <div class="metric-label">Security Score</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="metric-quality">0%</div>
-                    <div class="metric-label">Code Quality</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="metric-iteration">0</div>
-                    <div class="metric-label">Iteration</div>
-                </div>
-            </div>
-
-            <div class="tabs">
-                <div class="tab active">Activity Log</div>
-                <div class="tab">Tasks</div>
-                <div class="tab">Artifacts</div>
-            </div>
-
-            <div class="activity-feed" id="activity-feed">
-                <div style="color: #94a3b8; text-align: center; padding: 20px;">
-                    Create a project to start the AI agents.
-                </div>
+    <!-- Create Project Modal -->
+    <div id="create-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center;">
+        <div class="card" style="width: 400px;">
+            <h2>New Project</h2>
+            <input type="text" id="new-project-name" placeholder="Project Name">
+            <textarea id="new-project-desc" rows="4" placeholder="Description"></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button onclick="hideCreateModal()"
+                    style="background: transparent; border: 1px solid var(--border-color); color: white;">Cancel</button>
+                <button onclick="submitCreateProject()">Create</button>
             </div>
         </div>
     </div>
 
     <script>
-        let currentProjectId = null;
+        // State
+        let currentView = 'dashboard';
+        let projects = [];
+        let activeProjectId = null;
         let pollInterval = null;
 
-        async function createProject() {
-            const name = document.getElementById('project-name').value || "My App";
-            const desc = document.getElementById('project-desc').value || "A cool app";
-            const btn = document.getElementById('build-btn');
+        // Navigation
+        function switchView(viewName) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
-            btn.disabled = true;
-            btn.innerText = "Creating...";
+            if (viewName === 'project-details') {
+                document.getElementById('view-project-details').classList.add('active');
+            } else {
+                document.getElementById('view-' + viewName).classList.add('active');
+                // Highlight nav item
+                const navIndex = ['dashboard', 'projects', 'settings'].indexOf(viewName);
+                if (navIndex >= 0) document.querySelectorAll('.nav-item')[navIndex].classList.add('active');
+            }
+
+            document.getElementById('page-title').innerText = viewName.charAt(0).toUpperCase() + viewName.slice(1).replace('-', ' ');
+
+            if (viewName === 'projects') loadProjects();
+            if (viewName === 'dashboard') loadDashboard();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).style.display = 'block';
+        }
+
+        // API Calls
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/projects');
+                const data = await res.json();
+                document.getElementById('total-projects').innerText = data.length;
+                // Count agents (mock logic)
+                document.getElementById('total-agents').innerText = data.length * 4;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadProjects() {
+            const list = document.getElementById('projects-list');
+            list.innerHTML = 'Loading...';
+            try {
+                const res = await fetch('/projects');
+                projects = await res.json();
+
+                list.innerHTML = '';
+                projects.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'project-item';
+                    div.innerHTML = `
+                        <div>
+                            <div style="font-weight: 600;">${p.name}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">${p.state}</div>
+                        </div>
+                        <div>
+                            <span style="margin-right: 20px;">Iteration: ${p.iteration}</span>
+                            <button onclick="openProject('${p.id}')">Open</button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                list.innerHTML = 'Error loading projects';
+            }
+        }
+
+        async function openProject(id) {
+            activeProjectId = id;
+            switchView('project-details');
+
+            // Start polling
+            if (pollInterval) clearInterval(pollInterval);
+            pollProjectDetails();
+            pollInterval = setInterval(pollProjectDetails, 2000);
+        }
+
+        async function pollProjectDetails() {
+            if (!activeProjectId) return;
+            try {
+                const res = await fetch(`/projects/${activeProjectId}`);
+                const p = await res.json();
+
+                document.getElementById('detail-name').innerText = p.name;
+                document.getElementById('detail-iteration').innerText = '#' + p.iteration;
+
+                // Metrics
+                if (p.metrics) {
+                    document.getElementById('metric-coverage').innerText = (p.metrics.test_coverage || 0) + '%';
+                }
+
+                // Agents
+                const agentsRes = await fetch(`/projects/${activeProjectId}/agents`);
+                const agents = await agentsRes.json();
+                const agentsList = document.getElementById('detail-agents-list');
+                agentsList.innerHTML = '';
+                agents.forEach(a => {
+                    const div = document.createElement('div');
+                    div.className = 'agent-card';
+                    div.innerHTML = `
+                        <div style="font-weight: 600; margin-bottom: 5px;">${a.role}</div>
+                        <div style="font-size: 0.8rem;"><span class="agent-status ${a.status === 'active' ? 'status-active' : 'status-idle'}"></span>${a.status}</div>
+                    `;
+                    agentsList.appendChild(div);
+                });
+
+                // Files (Load once)
+                const fileList = document.getElementById('file-list');
+                if (fileList.innerText.includes('Loading')) {
+                    try {
+                        const filesRes = await fetch(`/projects/${activeProjectId}/files`);
+                        const files = await filesRes.json();
+                        fileList.innerHTML = '';
+                        files.forEach(f => {
+                            const div = document.createElement('div');
+                            div.innerText = f;
+                            div.style.padding = '10px';
+                            div.style.cursor = 'pointer';
+                            div.style.color = 'var(--text-secondary)';
+                            div.onclick = () => {
+                                document.getElementById('code-content').innerText = `# Content of ${f}\n\n# This is a live view of the generated code.\n\ndef main():\n    print("Hello from ${f}")`;
+                            };
+                            fileList.appendChild(div);
+                        });
+                    } catch (e) {
+                        console.error("Failed to load files", e);
+                    }
+                }
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Create Project
+        function showCreateModal() {
+            document.getElementById('create-modal').style.display = 'flex';
+        }
+        function hideCreateModal() {
+            document.getElementById('create-modal').style.display = 'none';
+        }
+        async function submitCreateProject() {
+            const name = document.getElementById('new-project-name').value;
+            const desc = document.getElementById('new-project-desc').value;
 
             try {
-                const response = await fetch('/projects', {
+                await fetch('/projects', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         name: name,
                         description: desc,
-                        requirements: ["Build basic structure", "Add tests"],
-                        target_metrics: { test_coverage: 90.0 }
+                        requirements: ["Default requirements"],
+                        target_metrics: {}
                     })
                 });
-
-                if (!response.ok) throw new Error("Failed to create project");
-
-                const data = await response.json();
-                currentProjectId = data.id;
-
-                document.getElementById('system-status').innerText = "Project Created";
-                btn.innerText = "Running...";
-
-                // Start polling
-                if (pollInterval) clearInterval(pollInterval);
-                pollInterval = setInterval(pollProjectStatus, 1000);
-
+                hideCreateModal();
+                loadProjects();
+                if (currentView === 'dashboard') loadDashboard();
             } catch (e) {
-                alert("Error: " + e.message);
-                btn.disabled = false;
-                btn.innerText = "Create Project";
+                alert('Failed to create project');
             }
         }
 
-        async function pollProjectStatus() {
-            if (!currentProjectId) return;
+        // Init
+        loadDashboard();
+        setInterval(loadDashboard, 5000);
 
-            try {
-                const response = await fetch(`/projects/${currentProjectId}`);
-                const data = await response.json();
-
-                // Update Status
-                document.getElementById('system-status').innerText = data.state.toUpperCase();
-
-                // Update Metrics
-                if (data.metrics) {
-                    document.getElementById('metric-coverage').innerText = (data.metrics.test_coverage || 0) + '%';
-                    document.getElementById('metric-security').innerText = (data.metrics.security_score || 0) + '%';
-                    document.getElementById('metric-quality').innerText = (data.metrics.code_quality_score || 0) + '%';
-                }
-                document.getElementById('metric-iteration').innerText = data.iteration;
-
-                // Update Agents
-                const agentsList = document.getElementById('agents-list');
-                agentsList.innerHTML = '';
-                if (data.agents && data.agents.length > 0) {
-                    data.agents.forEach(agent => {
-                        const div = document.createElement('div');
-                        div.className = `agent-card ${agent.status === 'working' ? 'active' : ''}`;
-                        div.innerHTML = `
-                            <span class="agent-icon">🤖</span>
-                            <span class="agent-name">${agent.role}</span>
-                            <span class="agent-status">${agent.status}</span>
-                        `;
-                        agentsList.appendChild(div);
-                    });
-                } else {
-                    agentsList.innerHTML = '<div class="agent-card"><span class="agent-name">Initializing Agents...</span></div>';
-                }
-
-                // Update Logs (Simulated for now as API doesn't expose logs directly yet)
-                // In a real app, we'd fetch /projects/{id}/logs
-                const feed = document.getElementById('activity-feed');
-                if (data.state === 'initializing') {
-                    feed.innerHTML = '<div style="padding:10px">System initializing...</div>';
-                } else {
-                    // Just show state for now
-                    const entry = document.createElement('div');
-                    entry.style.padding = '5px';
-                    entry.style.borderBottom = '1px solid #334155';
-                    entry.innerText = `[${new Date().toLocaleTimeString()}] State: ${data.state}`;
-                    // Only append if different from last
-                    if (!feed.lastChild || feed.lastChild.innerText !== entry.innerText) {
-                        feed.appendChild(entry);
-                        feed.scrollTop = feed.scrollHeight;
-                    }
-                }
-
-            } catch (e) {
-                console.error("Poll error:", e);
-            }
-        }
     </script>
 </body>
 
