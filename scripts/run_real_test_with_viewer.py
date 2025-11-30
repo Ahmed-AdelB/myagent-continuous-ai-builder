@@ -91,6 +91,10 @@ def parse_log_line(line):
         
     return None, None
 
+import webbrowser
+
+# ... (imports)
+
 def run_real_test():
     # Initialize events file
     with open(EVENTS_FILE, "w") as f:
@@ -102,6 +106,11 @@ def run_real_test():
     # Start HTTP server in background thread
     server_thread = threading.Thread(target=start_server, daemon=True)
     server_thread.start()
+    
+    # Open browser automatically
+    url = "http://localhost:8080/simulation_viewer.html"
+    print(f"Opening browser at: {url}")
+    webbrowser.open(url)
     
     # Give user time to open browser
     print("Waiting 3 seconds for server startup...")

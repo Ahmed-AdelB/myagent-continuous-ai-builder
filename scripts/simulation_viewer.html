@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -46,8 +47,15 @@
             border-bottom: 1px solid #334155;
         }
 
-        h1 { margin: 0; font-size: 1.5rem; font-weight: 700; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
         .status-badge {
             background: rgba(56, 189, 248, 0.1);
             color: var(--accent-color);
@@ -80,9 +88,21 @@
             border-left: 3px solid var(--accent-color);
         }
 
-        .agent-icon { font-size: 1.2rem; margin-right: 12px; }
-        .agent-name { font-weight: 600; font-size: 0.9rem; }
-        .agent-status { margin-left: auto; font-size: 0.75rem; color: var(--text-secondary); }
+        .agent-icon {
+            font-size: 1.2rem;
+            margin-right: 12px;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .agent-status {
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
 
         .activity-feed {
             background-color: var(--card-bg);
@@ -104,11 +124,25 @@
             border-left: 3px solid transparent;
         }
 
-        .log-entry.architect { border-color: #c084fc; }
-        .log-entry.coder { border-color: #38bdf8; }
-        .log-entry.tester { border-color: #4ade80; }
-        .log-entry.debugger { border-color: #f87171; }
-        .log-entry.system { border-color: #94a3b8; }
+        .log-entry.architect {
+            border-color: #c084fc;
+        }
+
+        .log-entry.coder {
+            border-color: #38bdf8;
+        }
+
+        .log-entry.tester {
+            border-color: #4ade80;
+        }
+
+        .log-entry.debugger {
+            border-color: #f87171;
+        }
+
+        .log-entry.system {
+            border-color: #94a3b8;
+        }
 
         .log-header {
             display: flex;
@@ -118,7 +152,10 @@
             color: var(--text-secondary);
         }
 
-        .log-content { font-size: 0.95rem; line-height: 1.5; }
+        .log-content {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
 
         .metrics-grid {
             grid-column: 1 / -1;
@@ -136,21 +173,50 @@
             border: 1px solid #334155;
         }
 
-        .metric-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
-        .metric-label { font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px; }
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        
+
         /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-color); }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="container">
@@ -247,9 +313,15 @@
 
         async function pollEvents() {
             try {
-                const response = await fetch('simulation_events.json');
+                // Add timestamp to prevent caching
+                const response = await fetch('simulation_events.json?t=' + Date.now());
+                if (!response.ok) throw new Error("Network response was not ok");
+
                 const data = await response.json();
-                
+
+                // Clear error if successful
+                document.getElementById('system-status').style.color = 'var(--accent-color)';
+
                 // Process new logs
                 if (data.logs && data.logs.length > lastLogIndex) {
                     for (let i = lastLogIndex; i < data.logs.length; i++) {
@@ -262,18 +334,21 @@
                 if (data.metrics) {
                     updateMetrics(data.metrics);
                 }
-                
+
                 // Update status
                 if (data.status) {
                     document.getElementById('system-status').innerText = data.status;
                 }
 
             } catch (e) {
-                console.log("Waiting for simulation data...");
+                console.log("Connection error:", e);
+                document.getElementById('system-status').innerText = "Connection Error - Is the script running?";
+                document.getElementById('system-status').style.color = 'var(--error-color)';
             }
         }
 
         setInterval(pollEvents, 1000);
     </script>
 </body>
+
 </html>
