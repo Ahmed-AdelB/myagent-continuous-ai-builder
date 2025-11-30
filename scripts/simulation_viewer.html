@@ -342,8 +342,24 @@
 
             } catch (e) {
                 console.log("Connection error:", e);
-                document.getElementById('system-status').innerText = "Connection Error - Is the script running?";
-                document.getElementById('system-status').style.color = 'var(--error-color)';
+                const statusEl = document.getElementById('system-status');
+                statusEl.innerText = `Connection Error: ${e.message}`;
+                statusEl.style.color = 'var(--error-color)';
+
+                // Add diagnostic info
+                if (!document.getElementById('diag-info')) {
+                    const diag = document.createElement('div');
+                    diag.id = 'diag-info';
+                    diag.style.color = '#ef4444';
+                    diag.style.fontSize = '0.8rem';
+                    diag.style.marginTop = '10px';
+                    diag.innerHTML = `
+                        Trying to fetch: <code>simulation_events.json</code><br>
+                        Current URL: <code>${window.location.href}</code><br>
+                        Tip: Ensure <code>run_real_test_with_viewer.py</code> is running.
+                    `;
+                    document.querySelector('.header').appendChild(diag);
+                }
             }
         }
 

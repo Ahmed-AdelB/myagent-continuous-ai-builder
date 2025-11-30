@@ -96,9 +96,9 @@ import webbrowser
 # ... (imports)
 
 def run_real_test():
-    # Initialize events file
-    with open(EVENTS_FILE, "w") as f:
-        json.dump(simulation_state, f, indent=2)
+    # Initialize events file with a test event
+    write_event("System", "Viewer connected. Waiting for test execution...")
+    update_status("Connected")
 
     print("🚀 Starting Real System Test...")
     update_status("Running Tests")
